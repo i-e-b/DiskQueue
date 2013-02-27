@@ -7,7 +7,7 @@ namespace Rhino.Queues.Storage.Disk.Tests
 	using System.IO;
 
 	[TestFixture]
-	public class TrasactionLogTests : PersistentQueueTestsBase
+	public class TransactionLogTests : PersistentQueueTestsBase
 	{
 		[Test]
 		public void Transaction_log_size_shrink_after_queue_disposed()

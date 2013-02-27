@@ -5,7 +5,7 @@ namespace Rhino.Queues.Storage.Disk.Tests
 	using System.IO;
 
 	[TestFixture]
-	public class MutliFileQueueTests : PersistentQueueTestsBase
+	public class MultiFileQueueTests : PersistentQueueTestsBase
 	{
 		[Test]
 		public void Can_limit_amount_of_items_in_queue_file()

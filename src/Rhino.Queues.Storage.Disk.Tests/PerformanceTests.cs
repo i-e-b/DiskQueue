@@ -5,7 +5,7 @@ namespace Rhino.Queues.Storage.Disk.Tests
 	using System;
 	using System.Collections.Generic;
 
-	[TestFixture]
+	[TestFixture, Explicit]
 	public class PerformanceTests : PersistentQueueTestsBase
 	{
 		[Test]
@@ -61,12 +61,14 @@ namespace Rhino.Queues.Storage.Disk.Tests
 				{
 					for (int i = 0; i < largeCount; i++)
 					{
-						new Guid(session.Dequeue());
+						Ignore(new Guid(session.Dequeue()));
 					}
 					session.Flush();
 				}
 			}
 		}
+
+		static void Ignore(Guid guid) { }
 
 		[Test]
 		public void Enqueue_and_dequeue_million_items_restart_queue()
@@ -89,7 +91,7 @@ namespace Rhino.Queues.Storage.Disk.Tests
 				{
 					for (int i = 0; i < largeCount; i++)
 					{
-						new Guid(session.Dequeue());
+						Ignore(new Guid(session.Dequeue()));
 					}
 					session.Flush();
 				}
