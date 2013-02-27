@@ -137,7 +137,6 @@ namespace DiskQueue.Implementation
 			if (fileLock != null)
 				fileLock.Dispose();
 			fileLock = null;
-			GC.SuppressFinalize(this);
 		}
 
 		public void AcquireWriter(
@@ -550,11 +549,6 @@ namespace DiskQueue.Implementation
 		public string GetDataPath(int index)
 		{
 			return Path.Combine(path, "data." + index);
-		}
-
-		~PersistentQueueImpl()
-		{
-			Dispose();
 		}
 
 		private long GetOptimalTransactionLogSize()

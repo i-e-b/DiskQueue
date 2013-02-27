@@ -26,7 +26,7 @@ namespace DiskQueue
 
 		~PersistentQueue()
 		{
-			_queue.Dispose();
+			Dispose();
 		}
 
 		public IPersistentQueueSession OpenSession()
