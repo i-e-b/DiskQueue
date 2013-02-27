@@ -39,7 +39,7 @@ namespace Rhino.Queues.Storage.Disk.Tests
 		}
 
 		[Test]
-		public void Dequeqing_from_empty_queue_will_return_null()
+		public void Dequeing_from_empty_queue_will_return_null()
 		{
 			using (var queue = new PersistentQueue(path))
 			using (var session = queue.OpenSession())

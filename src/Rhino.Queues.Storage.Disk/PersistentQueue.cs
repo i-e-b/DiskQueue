@@ -122,8 +122,6 @@ namespace Rhino.Queues.Storage.Disk
 			get { return Path.Combine(path, "meta.state"); }
 		}
 
-		#region IPersistentQueueImpl Members
-
 		public int CurrentFileNumber { get; private set; }
 
 		public void Dispose()
@@ -141,7 +139,6 @@ namespace Rhino.Queues.Storage.Disk
 			GC.SuppressFinalize(this);
 		}
 
-
 		public void AcquireWriter(
 			Stream stream,
 			Func<Stream, long> action,
@@ -154,8 +151,8 @@ namespace Rhino.Queues.Storage.Disk
 					stream.Position = CurrentFilePosition;
 				}
 				CurrentFilePosition = action(stream);
-				if (CurrentFilePosition < MaxFileSize)
-					return;
+				if (CurrentFilePosition < MaxFileSize) return;
+
 				CurrentFileNumber += 1;
 				var writer = CreateWriter();
 				// we assume same size messages, or near size messages
@@ -212,6 +209,7 @@ namespace Rhino.Queues.Storage.Disk
 				if (first == null)
 					return null;
 				var entry = first.Value;
+				
 				if (entry.Data == null)
 				{
 					ReadAhead();
@@ -302,8 +300,6 @@ namespace Rhino.Queues.Storage.Disk
 			}
 		}
 
-		#endregion
-
 		private void ReadTransactionLog()
 		{
 			var requireTxLogTrimming = false;
@@ -349,14 +345,11 @@ namespace Rhino.Queues.Storage.Disk
 					catch (EndOfStreamException)
 					{
 						// we have a truncated transaction, need to clear that
-						if (readingTransaction)
-							requireTxLogTrimming = true;
-						return;
+						if (readingTransaction) requireTxLogTrimming = true;
 					}
 				}
 			});
-			if (requireTxLogTrimming)
-				FlushTrimmedTransactionLog();
+			if (requireTxLogTrimming) FlushTrimmedTransactionLog();
 		}
 
 		private void FlushTrimmedTransactionLog()
