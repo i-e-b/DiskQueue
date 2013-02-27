@@ -1,0 +1,26 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 10.00
+# Visual Studio 2008
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Rhino.Queues.Storage.Disk", "src\Rhino.Queues.Storage.Disk\Rhino.Queues.Storage.Disk.csproj", "{D3F1301E-3C40-4FE5-9FF3-5D95D3A4F7E5}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Rhino.Queues.Storage.Disk.Tests", "src\Rhino.Queues.Storage.Disk.Tests\Rhino.Queues.Storage.Disk.Tests.csproj", "{1CE72DCA-61B7-4865-B5CB-191D04FB5B46}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{D3F1301E-3C40-4FE5-9FF3-5D95D3A4F7E5}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{D3F1301E-3C40-4FE5-9FF3-5D95D3A4F7E5}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{D3F1301E-3C40-4FE5-9FF3-5D95D3A4F7E5}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{D3F1301E-3C40-4FE5-9FF3-5D95D3A4F7E5}.Release|Any CPU.Build.0 = Release|Any CPU
+		{1CE72DCA-61B7-4865-B5CB-191D04FB5B46}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{1CE72DCA-61B7-4865-B5CB-191D04FB5B46}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{1CE72DCA-61B7-4865-B5CB-191D04FB5B46}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{1CE72DCA-61B7-4865-B5CB-191D04FB5B46}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+EndGlobal
