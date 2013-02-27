@@ -1,15 +1,16 @@
+using NUnit.Framework;
+
 namespace Rhino.Queues.Storage.Disk.Tests
 {
 	using System;
 	using System.Collections.Generic;
 	using System.IO;
-	using MbUnit.Framework;
 
 	[TestFixture]
 	public class PersistentQueueTests : PersistentQueueTestsBase
 	{
 		[Test]
-		[ExpectedException(typeof(InvalidOperationException), "Another instance of the queue is already in action, or directory does not exists")]
+		[ExpectedException(typeof(InvalidOperationException), ExpectedMessage = "Another instance of the queue is already in action, or directory does not exists")]
 		public void Only_single_instance_of_queue_can_exists_at_any_one_time()
 		{
 			using (new PersistentQueue(path))
@@ -25,7 +26,7 @@ namespace Rhino.Queues.Storage.Disk.Tests
 		}
 
 		[Test]
-		[ExpectedException(typeof(InvalidOperationException), "Unexpected data in transaction log. Expected to get transaction separator but got unknonwn data. Tx #1")]
+		[ExpectedException(typeof(InvalidOperationException), ExpectedMessage ="Unexpected data in transaction log. Expected to get transaction separator but got unknonwn data. Tx #1")]
 		public void Corrupt_index_file_should_throw()
 		{
 			var buffer = new List<byte>();

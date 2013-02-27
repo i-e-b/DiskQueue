@@ -1,6 +1,7 @@
+using NUnit.Framework;
+
 namespace Rhino.Queues.Storage.Disk.Tests
 {
-	using MbUnit.Framework;
 
 	[TestFixture]
 	public class CountOfItemsPersistentQueueTests : PersistentQueueTestsBase
