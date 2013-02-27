@@ -1,12 +1,12 @@
-namespace Rhino.Queues.Storage.Disk
-{
-	using System;
-	using System.Collections.Generic;
-	using System.IO;
-	using System.Linq;
-	using System.Threading;
+using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
+using System.Threading;
 
-	public class PersistentQueueSession : IDisposable
+namespace DiskQueue.Implementation
+{
+	public class PersistentQueueSession : IDisposable, IPersistentQueueSession
 	{
 		private readonly List<Operation> operations = new List<Operation>();
 		private readonly IList<Exception> pendingWritesFailures = new List<Exception>();

@@ -1,9 +1,12 @@
-namespace Rhino.Queues.Storage.Disk
-{
-	using System;
+using System;
 
+namespace DiskQueue
+{
 	public interface IPersistentQueue : IDisposable
 	{
-		PersistentQueueSession OpenSession();
+		IPersistentQueueSession OpenSession();
+		int EstimatedCountOfItemsInQueue { get; }
+		IPersistentQueueImpl Internals { get; }
+		int MaxFileSize { get; }
 	}
 }

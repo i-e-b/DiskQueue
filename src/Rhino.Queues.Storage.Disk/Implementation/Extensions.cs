@@ -1,7 +1,7 @@
-namespace Rhino.Queues.Storage.Disk
-{
-	using System.Collections.Generic;
+using System.Collections.Generic;
 
+namespace DiskQueue.Implementation
+{
 	public static class Extensions
 	{
 		public static T GetOrCreateValue<T,K>(this IDictionary<K,T> self, K key)

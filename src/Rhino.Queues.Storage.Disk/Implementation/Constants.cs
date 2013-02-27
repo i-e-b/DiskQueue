@@ -1,7 +1,7 @@
-namespace Rhino.Queues.Storage.Disk
-{
-	using System;
+using System;
 
+namespace DiskQueue.Implementation
+{
 	public static class Constants
 	{
 		public static int OperationSeparator = 0x42FEBCA1;

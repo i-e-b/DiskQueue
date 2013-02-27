@@ -1,4 +1,4 @@
-namespace Rhino.Queues.Storage.Disk
+namespace DiskQueue.Implementation
 {
 	public class Operation
 	{

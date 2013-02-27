@@ -75,9 +75,9 @@
     <Compile Include="TransactionLogTests.cs" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\Rhino.Queues.Storage.Disk\Rhino.Queues.Storage.Disk.csproj">
+    <ProjectReference Include="..\Rhino.Queues.Storage.Disk\DiskQueue.csproj">
       <Project>{D3F1301E-3C40-4FE5-9FF3-5D95D3A4F7E5}</Project>
-      <Name>Rhino.Queues.Storage.Disk</Name>
+      <Name>DiskQueue</Name>
     </ProjectReference>
   </ItemGroup>
   <ItemGroup>

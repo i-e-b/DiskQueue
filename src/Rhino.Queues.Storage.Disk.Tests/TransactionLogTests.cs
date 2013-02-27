@@ -1,3 +1,4 @@
+using DiskQueue;
 using NUnit.Framework;
 
 namespace Rhino.Queues.Storage.Disk.Tests

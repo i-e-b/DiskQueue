@@ -23,11 +23,12 @@
 // CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
 // THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-namespace Rhino.Queues.Storage.Disk
-{
-	using System;
-	using System.IO;
 
+using System;
+using System.IO;
+
+namespace DiskQueue.Implementation
+{
 	/// <summary>
 	/// Allow to overwrite a file in a transactional manner.
 	/// That is, either we completely succeed or completely fail in writing to the file.

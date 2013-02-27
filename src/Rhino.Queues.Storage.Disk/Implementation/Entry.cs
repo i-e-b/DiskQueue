@@ -1,7 +1,7 @@
-namespace Rhino.Queues.Storage.Disk
-{
-	using System;
+using System;
 
+namespace DiskQueue.Implementation
+{
 	public class Entry : IEquatable<Entry>
 	{
 		public Entry(int fileNumber, int start, int length)

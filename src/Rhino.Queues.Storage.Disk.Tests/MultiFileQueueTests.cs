@@ -1,3 +1,4 @@
+using DiskQueue;
 using NUnit.Framework;
 
 namespace Rhino.Queues.Storage.Disk.Tests
@@ -10,7 +11,7 @@ namespace Rhino.Queues.Storage.Disk.Tests
 		[Test]
 		public void Can_limit_amount_of_items_in_queue_file()
 		{
-			using (var queue = new PersistentQueue(path, 10))
+			using (IPersistentQueue queue = new PersistentQueue(path, 10))
 			{
 				Assert.AreEqual(10, queue.MaxFileSize);
 			}
@@ -46,7 +47,7 @@ namespace Rhino.Queues.Storage.Disk.Tests
 						session.Flush();
 					}
 				}
-				Assert.AreEqual(1, queue.CurrentFileNumber);
+				Assert.AreEqual(1, queue.Internals.CurrentFileNumber);
 			}
 		}
 
@@ -63,7 +64,7 @@ namespace Rhino.Queues.Storage.Disk.Tests
 						session.Flush();
 					}
 				}
-				Assert.AreEqual(1, queue.CurrentFileNumber);
+				Assert.AreEqual(1, queue.Internals.CurrentFileNumber);
 			}
 			using (var queue = new PersistentQueue(path, 10))
 			{
@@ -75,7 +76,7 @@ namespace Rhino.Queues.Storage.Disk.Tests
 						session.Flush();
 					}
 				}
-				Assert.AreEqual(1, queue.CurrentFileNumber);
+				Assert.AreEqual(1, queue.Internals.CurrentFileNumber);
 			}
 		}
 
@@ -92,7 +93,7 @@ namespace Rhino.Queues.Storage.Disk.Tests
 						session.Flush();
 					}
 				}
-				Assert.AreEqual(1, queue.CurrentFileNumber);
+				Assert.AreEqual(1, queue.Internals.CurrentFileNumber);
 			}
 
 			using (var queue = new PersistentQueue(path, 10))
@@ -121,7 +122,7 @@ namespace Rhino.Queues.Storage.Disk.Tests
 						session.Flush();
 					}
 				}
-				Assert.AreEqual(1, queue.CurrentFileNumber);
+				Assert.AreEqual(1, queue.Internals.CurrentFileNumber);
 			}
 
 			using (var queue = new PersistentQueue(path, 10))
@@ -134,7 +135,7 @@ namespace Rhino.Queues.Storage.Disk.Tests
 						session.Flush();
 					}
 				}
-				Assert.AreEqual(1, queue.CurrentFileNumber);
+				Assert.AreEqual(1, queue.Internals.CurrentFileNumber);
 			}
 
 
@@ -170,7 +171,7 @@ namespace Rhino.Queues.Storage.Disk.Tests
 						session.Flush();
 					}
 				}
-				Assert.AreEqual(1, queue.CurrentFileNumber);
+				Assert.AreEqual(1, queue.Internals.CurrentFileNumber);
 			}
 
 			using (var queue = new PersistentQueue(path, 10))
