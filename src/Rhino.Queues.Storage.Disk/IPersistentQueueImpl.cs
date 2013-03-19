@@ -14,5 +14,6 @@ namespace DiskQueue
 		Entry Dequeue();
 		void Reinstate(IEnumerable<Operation> reinstatedOperations);
 		int CurrentFileNumber { get;  }
+		bool TrimTransactionLogOnDispose { get; set; }
 	}
 }
