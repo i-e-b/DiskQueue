@@ -465,7 +465,7 @@ namespace DiskQueue.Implementation
 			var separator = new Guid(bytes);
 			if (separator != expectedValue)
 				throw new InvalidOperationException(
-					"Unexpected data in transaction log. Expected to get transaction separator but got unknonwn data. Tx #" + txCount);
+					"Unexpected data in transaction log. Expected to get transaction separator but got unknown data. Tx #" + txCount);
 		}
 
 

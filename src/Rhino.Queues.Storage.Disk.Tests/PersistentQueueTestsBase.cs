@@ -1,3 +1,4 @@
+using System;
 using NUnit.Framework;
 
 namespace Rhino.Queues.Storage.Disk.Tests
@@ -11,9 +12,7 @@ namespace Rhino.Queues.Storage.Disk.Tests
 		[SetUp]
 		public void Setup()
 		{
-			if (Directory.Exists(path))
-				Directory.Delete(path, true);
-			Directory.CreateDirectory(path);
+			RebuildPath();
 		}
 
 		/// <summary>
@@ -22,8 +21,23 @@ namespace Rhino.Queues.Storage.Disk.Tests
 		[TearDown]
 		public void Teardown()
 		{
+			RebuildPath();
+		}
+
+		static void RebuildPath()
+		{
 			if (Directory.Exists(path))
+			{
+				var files = Directory.GetFiles(path, "*", SearchOption.AllDirectories);
+				Array.Sort(files, (s1, s2) => s2.Length.CompareTo(s1.Length));// sortby length descending
+				foreach (var file in files)
+				{
+					File.Delete(file);
+				}
+
 				Directory.Delete(path, true);
+
+			}
 			Directory.CreateDirectory(path);
 		}
 	}

@@ -11,12 +11,25 @@ namespace Rhino.Queues.Storage.Disk.Tests
 	public class PersistentQueueTests : PersistentQueueTestsBase
 	{
 		[Test]
-		[ExpectedException(typeof(InvalidOperationException), ExpectedMessage = "Another instance of the queue is already in action, or directory does not exists")]
+		[ExpectedException(typeof(InvalidOperationException),
+			ExpectedMessage = "Another instance of the queue is already in action, or directory does not exists")]
 		public void Only_single_instance_of_queue_can_exists_at_any_one_time()
 		{
 			using (new PersistentQueue(path))
 			{
 				new PersistentQueue(path);
+			}
+		}
+
+		[Test]
+		public void If_a_non_running_process_has_a_lock_then_can_start_an_instance ()
+		{
+			var lockFilePath = Path.Combine(path, "lock");
+			File.WriteAllText(lockFilePath, "78924759045");
+			
+			using (new PersistentQueue(path))
+			{
+				Assert.Pass();
 			}
 		}
 
@@ -27,7 +40,7 @@ namespace Rhino.Queues.Storage.Disk.Tests
 		}
 
 		[Test]
-		[ExpectedException(typeof(InvalidOperationException), ExpectedMessage ="Unexpected data in transaction log. Expected to get transaction separator but got unknonwn data. Tx #1")]
+		[ExpectedException(typeof(InvalidOperationException), ExpectedMessage ="Unexpected data in transaction log. Expected to get transaction separator but got unknown data. Tx #1")]
 		public void Corrupt_index_file_should_throw()
 		{
 			var buffer = new List<byte>();
@@ -48,7 +61,6 @@ namespace Rhino.Queues.Storage.Disk.Tests
 				Assert.IsNull(session.Dequeue());
 			}
 		}
-
 
 		[Test]
 		public void Can_enqueue_data_in_queue()
