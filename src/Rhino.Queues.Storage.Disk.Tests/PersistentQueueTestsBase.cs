@@ -45,7 +45,7 @@ namespace Rhino.Queues.Storage.Disk.Tests
 					}
 					Directory.CreateDirectory(path);
 				}
-				catch (UnauthorizedAccessException uae)
+				catch (UnauthorizedAccessException)
 				{
 					Console.WriteLine("Not allowed to delete queue directory. May fail later");
 				}
