@@ -8,6 +8,7 @@ namespace Rhino.Queues.Storage.Disk.Tests
 	public class PersistentQueueTestsBase
 	{
 		protected const string path = @".\queue";
+		static readonly object _lock = new Object();
 
 		[SetUp]
 		public void Setup()
@@ -26,19 +27,29 @@ namespace Rhino.Queues.Storage.Disk.Tests
 
 		static void RebuildPath()
 		{
-			if (Directory.Exists(path))
+			lock (_lock)
 			{
-				var files = Directory.GetFiles(path, "*", SearchOption.AllDirectories);
-				Array.Sort(files, (s1, s2) => s2.Length.CompareTo(s1.Length));// sortby length descending
-				foreach (var file in files)
+				try
 				{
-					File.Delete(file);
+					if (Directory.Exists(path))
+					{
+						var files = Directory.GetFiles(path, "*", SearchOption.AllDirectories);
+						Array.Sort(files, (s1, s2) => s2.Length.CompareTo(s1.Length)); // sortby length descending
+						foreach (var file in files)
+						{
+							File.Delete(file);
+						}
+
+						Directory.Delete(path, true);
+
+					}
+					Directory.CreateDirectory(path);
 				}
-
-				Directory.Delete(path, true);
-
+				catch (UnauthorizedAccessException uae)
+				{
+					Console.WriteLine("Not allowed to delete queue directory. May fail later");
+				}
 			}
-			Directory.CreateDirectory(path);
 		}
 	}
 }
