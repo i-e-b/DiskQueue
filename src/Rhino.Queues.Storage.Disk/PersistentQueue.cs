@@ -1,4 +1,7 @@
-﻿using System.Threading;
+﻿using System;
+using System.Diagnostics;
+using System.IO;
+using System.Threading;
 using DiskQueue.Implementation;
 
 namespace DiskQueue
@@ -31,6 +34,7 @@ namespace DiskQueue
 
 		public IPersistentQueueSession OpenSession()
 		{
+			if (_queue == null) throw new Exception("This queue has been disposed");
 			return _queue.OpenSession();
 		}
 
@@ -48,6 +52,35 @@ namespace DiskQueue
 		{
 			get { return _queue.TrimTransactionLogOnDispose; }
 			set { _queue.TrimTransactionLogOnDispose = value; }
+		}
+
+		public static IPersistentQueue WaitFor(string storagePath, TimeSpan maxWait)
+		{
+			var sw = new Stopwatch();
+			try
+			{
+				sw.Start();
+				do
+				{
+					try
+					{
+						return new PersistentQueue(storagePath);
+					}
+					catch (DirectoryNotFoundException)
+					{
+						throw new Exception("Target storagePath does not exist or is not accessible");
+					}
+					catch
+					{
+						Thread.Sleep(50);
+					}
+				} while (sw.Elapsed < maxWait);
+			}
+			finally
+			{
+				sw.Stop();
+			}
+			throw new TimeoutException("Could not aquire a lock in the time specified");
 		}
 	}
 }

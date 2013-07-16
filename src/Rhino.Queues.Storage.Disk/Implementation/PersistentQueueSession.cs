@@ -6,7 +6,7 @@ using System.Threading;
 
 namespace DiskQueue.Implementation
 {
-	public class PersistentQueueSession : IDisposable, IPersistentQueueSession
+	public class PersistentQueueSession : IPersistentQueueSession
 	{
 		private readonly List<Operation> operations = new List<Operation>();
 		private readonly IList<Exception> pendingWritesFailures = new List<Exception>();
@@ -15,6 +15,8 @@ namespace DiskQueue.Implementation
 		private readonly int writeBufferSize;
 		private readonly IPersistentQueueImpl queue;
 		private readonly List<Stream> streamsToDisposeOnFlush = new List<Stream>();
+		static readonly object _ctorLock = new object();
+		volatile bool disposed;
 
 		private readonly List<byte[]> buffer = new List<byte[]>();
 		private int bufferSize;
@@ -23,11 +25,15 @@ namespace DiskQueue.Implementation
 
 		public PersistentQueueSession(IPersistentQueueImpl queue, Stream currentStream, int writeBufferSize)
 		{
-			this.queue = queue;
-			this.currentStream = currentStream;
-			if (writeBufferSize < MinSizeThatMakeAsyncWritePractical)
-				writeBufferSize = MinSizeThatMakeAsyncWritePractical;
-			this.writeBufferSize = writeBufferSize;
+			lock (_ctorLock)
+			{
+				this.queue = queue;
+				this.currentStream = currentStream;
+				if (writeBufferSize < MinSizeThatMakeAsyncWritePractical)
+					writeBufferSize = MinSizeThatMakeAsyncWritePractical;
+				this.writeBufferSize = writeBufferSize;
+				disposed = false;
+			}
 		}
 
 		public void Enqueue(byte[] data)
@@ -178,14 +184,20 @@ namespace DiskQueue.Implementation
 
 		public void Dispose()
 		{
-			queue.Reinstate(operations);
-			operations.Clear();
-			foreach (var stream in streamsToDisposeOnFlush)
+			lock (_ctorLock)
 			{
-				stream.Dispose();
+				if (disposed) return;
+				disposed = true;
+				queue.Reinstate(operations);
+				operations.Clear();
+				foreach (var stream in streamsToDisposeOnFlush)
+				{
+					stream.Dispose();
+				}
+				currentStream.Dispose();
+				GC.SuppressFinalize(this);
 			}
-			currentStream.Dispose();
-			GC.SuppressFinalize(this);
+			Thread.Sleep(0);
 		}
 
 		~PersistentQueueSession()

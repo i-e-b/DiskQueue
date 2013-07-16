@@ -44,7 +44,10 @@ namespace DiskQueue.Implementation
 
 		private readonly object transactionLogLock = new object();
 		private readonly object writerLock = new object();
+		static readonly object _configLock = new object();
+		volatile bool disposed;
 		private FileStream fileLock;
+
 
 		public bool TrimTransactionLogOnDispose { get; set; }
 		public int SuggestedReadBuffer { get; set; }
@@ -53,33 +56,47 @@ namespace DiskQueue.Implementation
 
 		public PersistentQueueImpl(string path, int maxFileSize)
 		{
-			TrimTransactionLogOnDispose = true;
-			SuggestedMaxTransactionLogSize = 32 * 1024 * 1024;
-			SuggestedReadBuffer = 1024 * 1024;
-			SuggestedWriteBuffer = 1024 * 1024;
+			lock(_configLock)
+			{
+				disposed = true;
+				TrimTransactionLogOnDispose = true;
+				SuggestedMaxTransactionLogSize = 32*1024*1024;
+				SuggestedReadBuffer = 1024*1024;
+				SuggestedWriteBuffer = 1024*1024;
 
-			this.path = Path.GetFullPath(path);
-			MaxFileSize = maxFileSize;
-			try
-			{
-				fileLock = new FileStream(Path.Combine(path, "lock"), FileMode.Create, FileAccess.ReadWrite, FileShare.None);
-			}
-			catch (IOException e)
-			{
-				GC.SuppressFinalize(this); //avoid finalizing invalid instance
-				throw new InvalidOperationException("Another instance of the queue is already in action, or directory does not exists", e);
-			}
+				this.path = Path.GetFullPath(path);
+				MaxFileSize = maxFileSize;
+				try
+				{
+					if (!HasWriteAccessToFolder(path))
+						throw new UnauthorizedAccessException("Directory \"" + path + "\" does not exist or is missing write permissions");
 
-			try
-			{
-				ReadMetaState();
-				ReadTransactionLog();
-			}
-			catch (Exception)
-			{
-				GC.SuppressFinalize(this); //avoid finalizing invalid instance
-				fileLock.Dispose();
-				throw;
+					var target = Path.Combine(path, "lock");
+
+					fileLock = new FileStream(
+						target,
+						FileMode.Create,
+						FileAccess.ReadWrite,
+						FileShare.None);
+				}
+				catch (IOException e)
+				{
+					GC.SuppressFinalize(this); //avoid finalizing invalid instance
+					throw new InvalidOperationException("Another instance of the queue is already in action, or directory does not exists", e);
+				}
+
+				try
+				{
+					ReadMetaState();
+					ReadTransactionLog();
+				}
+				catch (Exception)
+				{
+					GC.SuppressFinalize(this); //avoid finalizing invalid instance
+					fileLock.Dispose();
+					throw;
+				}
+				disposed = false;
 			}
 		}
 
@@ -113,6 +130,20 @@ namespace DiskQueue.Implementation
 		public int MaxFileSize { get; private set; }
 		public long CurrentFilePosition { get; private set; }
 
+
+		bool HasWriteAccessToFolder(string folderPath)
+		{
+			try
+			{
+				Directory.GetAccessControl(folderPath);
+				return true;
+			}
+			catch (UnauthorizedAccessException)
+			{
+				return false;
+			}
+		}
+
 		private string TransactionLog
 		{
 			get { return Path.Combine(path, "transaction.log"); }
@@ -125,18 +156,32 @@ namespace DiskQueue.Implementation
 
 		public int CurrentFileNumber { get; private set; }
 
+		~PersistentQueueImpl()
+		{
+			Dispose();
+		}
 		public void Dispose()
 		{
-			if (TrimTransactionLogOnDispose)
+			lock (_configLock)
 			{
-				lock (transactionLogLock)
+				if (disposed) return;
+				disposed = true;
+				try
 				{
-					FlushTrimmedTransactionLog();
+					if (TrimTransactionLogOnDispose)
+					{
+						lock (transactionLogLock)
+						{
+							FlushTrimmedTransactionLog();
+						}
+					}
+				} finally
+				{
+					if (fileLock != null)
+						fileLock.Dispose();
+					fileLock = null;
 				}
 			}
-			if (fileLock != null)
-				fileLock.Dispose();
-			fileLock = null;
 		}
 
 		public void AcquireWriter(
