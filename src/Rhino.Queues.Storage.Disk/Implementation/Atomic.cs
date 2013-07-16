@@ -50,49 +50,57 @@ namespace DiskQueue.Implementation
 	/// </summary>
 	public static class Atomic
 	{
+		static readonly object _lock = new object();
+		
 		public static void Read(string name, Action<Stream> action)
 		{
-			if (File.Exists(name + ".old_copy"))
+			lock (_lock)
 			{
-				File.Delete(name);
-				File.Move(name + ".old_copy", name);
-			}
+				if (File.Exists(name + ".old_copy"))
+				{
+					File.Delete(name);
+					File.Move(name + ".old_copy", name);
+				}
 
-			using (
-				var stream = new FileStream(name, 
-					FileMode.OpenOrCreate, 
-					FileAccess.Read, 
-					FileShare.None, 
-					0x10000,
-					FileOptions.SequentialScan)
+				using (
+					var stream = new FileStream(name,
+					                            FileMode.OpenOrCreate,
+					                            FileAccess.Read,
+					                            FileShare.None,
+					                            0x10000,
+					                            FileOptions.SequentialScan)
 					)
-			{
-				action(stream);
+				{
+					action(stream);
+				}
 			}
 		}
 
 		public static void Write(string name, Action<Stream> action)
 		{
-			// if the old copy file exists, this means that we have
-			// a previous corrupt write, so we will not overrite it, but 
-			// rather overwrite the current file and keep it as our backup.
-			if (File.Exists(name + ".old_copy") == false)
-				File.Move(name, name + ".old_copy");
-
-			using (
-				var stream = new FileStream(name, 
-					FileMode.Create, 
-					FileAccess.Write, 
-					FileShare.None, 
-					0x10000,
-					FileOptions.WriteThrough | FileOptions.SequentialScan)
-					)
+			lock (_lock)
 			{
-				action(stream);
-				stream.Flush();
-			}
+				// if the old copy file exists, this means that we have
+				// a previous corrupt write, so we will not overrite it, but 
+				// rather overwrite the current file and keep it as our backup.
+				if (File.Exists(name + ".old_copy") == false)
+					File.Move(name, name + ".old_copy");
 
-			File.Delete(name + ".old_copy");
+				using (
+					var stream = new FileStream(name,
+					                            FileMode.Create,
+					                            FileAccess.Write,
+					                            FileShare.None,
+					                            0x10000,
+					                            FileOptions.WriteThrough | FileOptions.SequentialScan)
+					)
+				{
+					action(stream);
+					stream.Flush();
+				}
+
+				File.Delete(name + ".old_copy");
+			}
 		}
 	}
 }
