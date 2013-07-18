@@ -15,5 +15,12 @@ namespace DiskQueue
 		void Reinstate(IEnumerable<Operation> reinstatedOperations);
 		int CurrentFileNumber { get;  }
 		bool TrimTransactionLogOnDispose { get; set; }
+
+		/// <summary>
+		/// If true, each transaction commit will flush the transaction log.
+		/// This is slow, but ensures the log is correct per transaction in the event of a hard termination (i.e. power failure)
+		/// Defaults to true.
+		/// </summary>
+		bool ParanoidFlushing { get; set; }
 	}
 }

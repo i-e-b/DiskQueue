@@ -17,6 +17,7 @@ namespace Rhino.Queues.Storage.Disk.Tests
 			var txLogInfo = new FileInfo(Path.Combine(path, "transaction.log"));
 			using (var queue = new PersistentQueue(path))
 			{
+				queue.Internals.ParanoidFlushing = false;
 				using (var session = queue.OpenSession())
 				{
 					for (int j = 0; j < 10; j++)
@@ -45,6 +46,7 @@ namespace Rhino.Queues.Storage.Disk.Tests
 		{
 			using (var queue = new PersistentQueue(path))
 			{
+				queue.Internals.ParanoidFlushing = false;
 				using (var session = queue.OpenSession())
 				{
 					for (int j = 0; j < 10; j++)
@@ -120,6 +122,8 @@ namespace Rhino.Queues.Storage.Disk.Tests
 				SuggestedMaxTransactionLogSize = 32 // single entry
 			})
 			{
+				queue.Internals.ParanoidFlushing = false;
+
 				using (var session = queue.OpenSession())
 				{
 					for (int j = 0; j < 20; j++)
@@ -159,6 +163,8 @@ namespace Rhino.Queues.Storage.Disk.Tests
 				TrimTransactionLogOnDispose = false
 			})
 			{
+				queue.Internals.ParanoidFlushing = false;
+
 				using (var session = queue.OpenSession())
 				{
 					for (int j = 0; j < 20; j++)
@@ -267,6 +273,7 @@ namespace Rhino.Queues.Storage.Disk.Tests
 				TrimTransactionLogOnDispose = false
 			})
 			{
+				queue.Internals.ParanoidFlushing = false;
 				using (var session = queue.OpenSession())
 				{
 					for (int j = 0; j < 20; j++)

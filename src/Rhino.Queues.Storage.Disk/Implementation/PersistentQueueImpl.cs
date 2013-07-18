@@ -60,6 +60,7 @@ namespace DiskQueue.Implementation
 			{
 				disposed = true;
 				TrimTransactionLogOnDispose = true;
+				ParanoidFlushing = true;
 				SuggestedMaxTransactionLogSize = 32*1024*1024;
 				SuggestedReadBuffer = 1024*1024;
 				SuggestedWriteBuffer = 1024*1024;
@@ -115,6 +116,13 @@ namespace DiskQueue.Implementation
 		{
 			get { return entries.Count + checkedOutEntries.Count; }
 		}
+
+		/// <summary>
+		/// If true, each transaction commit will flush the transaction log.
+		/// This is slow, but ensures the log is correct per transaction in the event of a hard termination (i.e. power failure)
+		/// Defaults to true.
+		/// </summary>
+		public bool ParanoidFlushing { get; set; }
 
 		private int CurrentCountOfItemsInQueue
 		{
@@ -244,9 +252,10 @@ namespace DiskQueue.Implementation
 					stream.Write(bytes, 0, bytes.Length);
 				});
 
+				if (ParanoidFlushing) FlushTrimmedTransactionLog();
 			}
-			FlushTrimmedTransactionLog();
 		}
+
 
 		public Entry Dequeue()
 		{

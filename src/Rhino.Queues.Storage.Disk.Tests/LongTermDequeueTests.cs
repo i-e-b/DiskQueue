@@ -16,6 +16,12 @@ namespace Rhino.Queues.Storage.Disk.Tests
 			_q = PersistentQueue.WaitFor("./queue", TimeSpan.FromSeconds(10));
 		}
 
+		[TearDown]
+		public void teardown()
+		{
+			_q.Dispose();
+		}
+
 		[Test]
 		public void can_enqueue_during_a_long_dequeue ()
 		{
