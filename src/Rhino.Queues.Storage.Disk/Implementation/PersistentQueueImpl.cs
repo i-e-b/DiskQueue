@@ -243,7 +243,9 @@ namespace DiskQueue.Implementation
 					bytes = BitConverter.GetBytes(CurrentFilePosition);
 					stream.Write(bytes, 0, bytes.Length);
 				});
+
 			}
+			FlushTrimmedTransactionLog();
 		}
 
 		public Entry Dequeue()
