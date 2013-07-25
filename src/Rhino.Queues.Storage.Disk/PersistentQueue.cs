@@ -70,8 +70,9 @@ namespace DiskQueue
 					{
 						throw new Exception("Target storagePath does not exist or is not accessible");
 					}
-					catch
+					catch (Exception ex)
 					{
+						Console.WriteLine("Blocked by " + ex.GetType().Name + "; " + ex.Message);
 						Thread.Sleep(50);
 					}
 				} while (sw.Elapsed < maxWait);
