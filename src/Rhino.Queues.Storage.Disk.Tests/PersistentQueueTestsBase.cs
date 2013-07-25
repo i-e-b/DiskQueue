@@ -7,7 +7,7 @@ namespace Rhino.Queues.Storage.Disk.Tests
 
 	public class PersistentQueueTestsBase
 	{
-		protected const string path = @".\queue";
+		protected const string path = @"./queue";
 		static readonly object _lock = new Object();
 
 		[SetUp]
