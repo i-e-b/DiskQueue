@@ -138,9 +138,18 @@ namespace DiskQueue.Implementation
 		public int MaxFileSize { get; private set; }
 		public long CurrentFilePosition { get; private set; }
 
+		static bool RunningUnderPosix
+		{
+			get
+			{
+				var p = (int)Environment.OSVersion.Platform;
+				return (p == 4) || (p == 6) || (p == 128);
+			}
+		}
 
 		bool HasWriteAccessToFolder(string folderPath)
 		{
+			if (RunningUnderPosix) return true; // can't really find out accurately
 			try
 			{
 				Directory.GetAccessControl(folderPath);
