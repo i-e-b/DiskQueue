@@ -24,6 +24,7 @@ namespace Rhino.Queues.Storage.Disk.Tests
 		[Test]
 		public void If_a_non_running_process_has_a_lock_then_can_start_an_instance ()
 		{
+			Directory.CreateDirectory(path);
 			var lockFilePath = Path.Combine(path, "lock");
 			File.WriteAllText(lockFilePath, "78924759045");
 			
@@ -47,8 +48,10 @@ namespace Rhino.Queues.Storage.Disk.Tests
 			buffer.AddRange(Guid.NewGuid().ToByteArray());
 			buffer.AddRange(Guid.NewGuid().ToByteArray());
 			buffer.AddRange(Guid.NewGuid().ToByteArray());
-			File.WriteAllBytes(Path.Combine(path, "transaction.log"), 
-				buffer.ToArray());
+
+			Directory.CreateDirectory(path);
+			File.WriteAllBytes(Path.Combine(path, "transaction.log"), buffer.ToArray());
+
 			new PersistentQueue(path);
 		}
 

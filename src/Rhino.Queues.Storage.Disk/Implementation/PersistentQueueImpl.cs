@@ -47,6 +47,7 @@ namespace DiskQueue.Implementation
 		static readonly object _configLock = new object();
 		volatile bool disposed;
 		private FileStream fileLock;
+		static int _32Megabytes = 32 * 1024 * 1024;
 
 
 		public bool TrimTransactionLogOnDispose { get; set; }
@@ -61,17 +62,17 @@ namespace DiskQueue.Implementation
 				disposed = true;
 				TrimTransactionLogOnDispose = true;
 				ParanoidFlushing = true;
-				SuggestedMaxTransactionLogSize = 32*1024*1024;
+				SuggestedMaxTransactionLogSize = _32Megabytes;
 				SuggestedReadBuffer = 1024*1024;
 				SuggestedWriteBuffer = 1024*1024;
 
 				this.path = Path.GetFullPath(path);
+				if (!Directory.Exists(this.path))
+					CreateDirectory(this.path);
+
 				MaxFileSize = maxFileSize;
 				try
 				{
-					if (!HasWriteAccessToFolder(path))
-						throw new UnauthorizedAccessException("Directory \"" + path + "\" does not exist or is missing write permissions");
-
 					var target = Path.Combine(path, "lock");
 
 					fileLock = new FileStream(
@@ -79,6 +80,10 @@ namespace DiskQueue.Implementation
 						FileMode.Create,
 						FileAccess.ReadWrite,
 						FileShare.None);
+				}
+				catch (UnauthorizedAccessException)
+				{
+					throw new UnauthorizedAccessException("Directory \"" + path + "\" does not exist or is missing write permissions");
 				}
 				catch (IOException e)
 				{
@@ -101,11 +106,13 @@ namespace DiskQueue.Implementation
 			}
 		}
 
-		public PersistentQueueImpl(string path)
-			: this(path, 32 * 1024 * 1024)
+		void CreateDirectory(string s)
 		{
-			this.path = path;
+			Directory.CreateDirectory(s);
+			SetPermissions.AllowReadWriteForAll(s);
 		}
+
+		public PersistentQueueImpl(string path) : this(path, _32Megabytes) { }
 
 		/// <summary>
 		/// Gets the estimated count of items in queue.
@@ -137,29 +144,6 @@ namespace DiskQueue.Implementation
 
 		public int MaxFileSize { get; private set; }
 		public long CurrentFilePosition { get; private set; }
-
-		static bool RunningUnderPosix
-		{
-			get
-			{
-				var p = (int)Environment.OSVersion.Platform;
-				return (p == 4) || (p == 6) || (p == 128);
-			}
-		}
-
-		bool HasWriteAccessToFolder(string folderPath)
-		{
-			if (RunningUnderPosix) return true; // can't really find out accurately
-			try
-			{
-				Directory.GetAccessControl(folderPath);
-				return true;
-			}
-			catch (UnauthorizedAccessException)
-			{
-				return false;
-			}
-		}
 
 		private string TransactionLog
 		{
@@ -497,11 +481,13 @@ namespace DiskQueue.Implementation
 						break;
 				}
 			}
+
 			var filesToRemove = new HashSet<int>(
 				from pair in countOfItemsPerFile
 				where pair.Value < 1
 				select pair.Key
 				);
+
 			foreach (var i in filesToRemove)
 			{
 				countOfItemsPerFile.Remove(i);
@@ -555,11 +541,11 @@ namespace DiskQueue.Implementation
 
 		private void TrimTransactionLogIfNeeded(long txLogSize)
 		{
-			if (txLogSize < SuggestedMaxTransactionLogSize)// it is not big enough to care
-				return;
+			if (txLogSize < SuggestedMaxTransactionLogSize) return; // it is not big enough to care
+			
 			var optimalSize = GetOptimalTransactionLogSize();
-			if (txLogSize < (optimalSize * 2))   // not enough disparity to bother trimming
-				return;
+			if (txLogSize < (optimalSize * 2)) return;  // not enough disparity to bother trimming
+			
 			FlushTrimmedTransactionLog();
 		}
 
@@ -574,6 +560,7 @@ namespace DiskQueue.Implementation
 			{
 				if (CurrentFileNumber == fileNumber)
 					continue;
+
 				File.Delete(GetDataPath(fileNumber));
 			}
 		}

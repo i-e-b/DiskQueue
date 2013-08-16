@@ -43,7 +43,7 @@ namespace Rhino.Queues.Storage.Disk.Tests
 						Directory.Delete(path, true);
 
 					}
-					Directory.CreateDirectory(path);
+					//Directory.CreateDirectory(path);
 				}
 				catch (UnauthorizedAccessException)
 				{

@@ -26,6 +26,8 @@
 
 using System;
 using System.IO;
+using System.Threading;
+using DiskQueue.Implementation.CrossPlatform;
 
 namespace DiskQueue.Implementation
 {
@@ -58,8 +60,8 @@ namespace DiskQueue.Implementation
 			{
 				if (File.Exists(name + ".old_copy"))
 				{
-					File.Delete(name);
-					File.Move(name + ".old_copy", name);
+					if (WaitDelete(name))
+						File.Move(name + ".old_copy", name);
 				}
 
 				using (
@@ -71,6 +73,7 @@ namespace DiskQueue.Implementation
 					                            FileOptions.SequentialScan)
 					)
 				{
+					SetPermissions.AllowReadWriteForAll(name);
 					action(stream);
 				}
 			}
@@ -95,12 +98,30 @@ namespace DiskQueue.Implementation
 					                            FileOptions.WriteThrough | FileOptions.SequentialScan)
 					)
 				{
+					SetPermissions.TryAllowReadWriteForAll(name);
 					action(stream);
 					stream.Flush();
 				}
-
-				File.Delete(name + ".old_copy");
+				
+				WaitDelete(name + ".old_copy");
 			}
+		}
+
+		static bool WaitDelete(string s)
+		{
+			for (int i = 0; i < 5; i++)
+			{
+				try
+				{
+					File.Delete(s);
+					return true;
+				}
+				catch
+				{
+					Thread.Sleep(100);
+				}
+			}
+			return false;
 		}
 	}
 }
