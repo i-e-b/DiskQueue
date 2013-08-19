@@ -73,7 +73,7 @@ namespace DiskQueue.Implementation
 					                            FileOptions.SequentialScan)
 					)
 				{
-					SetPermissions.AllowReadWriteForAll(name);
+					SetPermissions.TryAllowReadWriteForAll(name);
 					action(stream);
 				}
 			}

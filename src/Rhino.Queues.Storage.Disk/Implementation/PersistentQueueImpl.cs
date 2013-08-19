@@ -109,7 +109,7 @@ namespace DiskQueue.Implementation
 		void CreateDirectory(string s)
 		{
 			Directory.CreateDirectory(s);
-			SetPermissions.AllowReadWriteForAll(s);
+			SetPermissions.TryAllowReadWriteForAll(s);
 		}
 
 		public PersistentQueueImpl(string path) : this(path, _32Megabytes) { }
