@@ -28,6 +28,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Threading;
 
 namespace DiskQueue.Implementation
 {
@@ -47,8 +48,7 @@ namespace DiskQueue.Implementation
 		static readonly object _configLock = new object();
 		volatile bool disposed;
 		private FileStream fileLock;
-		static int _32Megabytes = 32 * 1024 * 1024;
-
+		const int _32Megabytes = 32*1024*1024;
 
 		public bool TrimTransactionLogOnDispose { get; set; }
 		public int SuggestedReadBuffer { get; set; }
@@ -66,20 +66,14 @@ namespace DiskQueue.Implementation
 				SuggestedReadBuffer = 1024*1024;
 				SuggestedWriteBuffer = 1024*1024;
 
-				this.path = Path.GetFullPath(path);
-				if (!Directory.Exists(this.path))
-					CreateDirectory(this.path);
-
 				MaxFileSize = maxFileSize;
 				try
 				{
-					var target = Path.Combine(path, "lock");
+					this.path = Path.GetFullPath(path);
+					if (!Directory.Exists(this.path))
+						CreateDirectory(this.path);
 
-					fileLock = new FileStream(
-						target,
-						FileMode.Create,
-						FileAccess.ReadWrite,
-						FileShare.None);
+					LockQueue();
 				}
 				catch (UnauthorizedAccessException)
 				{
@@ -99,11 +93,32 @@ namespace DiskQueue.Implementation
 				catch (Exception)
 				{
 					GC.SuppressFinalize(this); //avoid finalizing invalid instance
-					fileLock.Dispose();
+					UnlockQueue();
 					throw;
 				}
 				disposed = false;
 			}
+		}
+
+		void UnlockQueue()
+		{
+			var target = Path.Combine(path, "lock");
+			if (fileLock != null)
+			{
+				fileLock.Dispose();
+				File.Delete(target);
+			}
+			fileLock = null;
+		}
+
+		void LockQueue()
+		{
+			var target = Path.Combine(path, "lock");
+			fileLock = new FileStream(
+				target,
+				FileMode.Create,
+				FileAccess.ReadWrite,
+				FileShare.None);
 		}
 
 		void CreateDirectory(string s)
@@ -166,21 +181,17 @@ namespace DiskQueue.Implementation
 			lock (_configLock)
 			{
 				if (disposed) return;
-				disposed = true;
 				try
 				{
-					if (TrimTransactionLogOnDispose)
+					disposed = true;
+					lock (transactionLogLock)
 					{
-						lock (transactionLogLock)
-						{
-							FlushTrimmedTransactionLog();
-						}
+						if (TrimTransactionLogOnDispose) FlushTrimmedTransactionLog();
 					}
-				} finally
+				}
+				finally
 				{
-					if (fileLock != null)
-						fileLock.Dispose();
-					fileLock = null;
+					UnlockQueue();
 				}
 			}
 		}
@@ -220,14 +231,7 @@ namespace DiskQueue.Implementation
 			lock (transactionLogLock)
 			{
 				long txLogSize;
-				using (
-					var stream = new FileStream(TransactionLog,
-												FileMode.Append,
-												FileAccess.Write,
-												FileShare.None,
-												transactionBuffer.Length,
-												FileOptions.SequentialScan | FileOptions.WriteThrough)
-					)
+				using ( var stream = WaitForTransactionLog(transactionBuffer))
 				{
 					stream.Write(transactionBuffer, 0, transactionBuffer.Length);
 					txLogSize = stream.Position;
@@ -249,6 +253,26 @@ namespace DiskQueue.Implementation
 			}
 		}
 
+		FileStream WaitForTransactionLog(byte[] transactionBuffer)
+		{
+			for (int i = 0; i < 10; i++)
+			{
+				try
+				{
+					return new FileStream(TransactionLog,
+										  FileMode.Append,
+										  FileAccess.Write,
+										  FileShare.None,
+										  transactionBuffer.Length,
+										  FileOptions.SequentialScan | FileOptions.WriteThrough);
+				}
+				catch (Exception)
+				{
+					Thread.Sleep(250);
+				}
+			}
+			throw new TimeoutException("Could not aquire transaction log lock");
+		}
 
 		public Entry Dequeue()
 		{
@@ -589,13 +613,17 @@ namespace DiskQueue.Implementation
 
 		private FileStream CreateWriter()
 		{
-			return new FileStream(
-				GetDataPath(CurrentFileNumber),
+			var dataFilePath = GetDataPath(CurrentFileNumber);
+			var stream = new FileStream(
+				dataFilePath,
 				FileMode.OpenOrCreate,
 				FileAccess.Write,
 				FileShare.ReadWrite,
 				0x10000,
 				FileOptions.Asynchronous | FileOptions.SequentialScan | FileOptions.WriteThrough);
+
+			SetPermissions.TryAllowReadWriteForAll(dataFilePath);
+			return stream;
 		}
 
 		public string GetDataPath(int index)
