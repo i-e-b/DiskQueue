@@ -50,7 +50,7 @@ namespace DiskQueue
 		{
 			if (RunningUnderPosix)
 			{
-				CoreUnixCalls.chmod(path, UnixFilePermissions.DEFFILEMODE);
+				CoreUnixCalls.chmod(path, UnixFilePermissions.ACCESSPERMS);
 			}
 			else
 			{
@@ -65,7 +65,7 @@ namespace DiskQueue
 		{
 			if (RunningUnderPosix)
 			{
-				CoreUnixCalls.chmod(path, UnixFilePermissions.DEFFILEMODE);
+				CoreUnixCalls.chmod(path, UnixFilePermissions.ACCESSPERMS);
 			}
 			else
 			{

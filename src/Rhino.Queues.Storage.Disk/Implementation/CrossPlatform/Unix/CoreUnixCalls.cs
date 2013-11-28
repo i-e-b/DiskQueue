@@ -37,6 +37,7 @@ namespace DiskQueue.Implementation.CrossPlatform.Unix
 	{
 		[DllImport("libc", EntryPoint = "chmod", SetLastError = true)]
 		static extern int sys_chmod(string path, uint mode);
+
 		public static int chmod(string path, UnixFilePermissions mode)
 		{
 			return sys_chmod(path, (uint)mode);
