@@ -9,16 +9,18 @@ namespace Rhino.Queues.Storage.Disk.Tests
 	[TestFixture, Explicit]
 	public class PerformanceTests : PersistentQueueTestsBase
 	{
-		[Test]
-		public void Enqueue_million_items_with_thousand_flushes()
+		[Test, Description(
+			"With a mid-range SSD, this is some 20x slower " +
+			"than with a single flush (depends on disk speed)")]
+		public void Enqueue_million_items_with_100_flushes()
 		{
 			using (var queue = new PersistentQueue(path))
 			{
-				for (int i = 0; i < 1000; i++)
+				for (int i = 0; i < 100; i++)
 				{
 					using (var session = queue.OpenSession())
 					{
-						for (int j = 0; j < 1000; j++)
+						for (int j = 0; j < 10000; j++)
 						{
 							session.Enqueue(Guid.NewGuid().ToByteArray());
 						}

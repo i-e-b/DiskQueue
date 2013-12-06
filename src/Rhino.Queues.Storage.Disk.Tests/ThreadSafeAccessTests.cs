@@ -17,7 +17,7 @@ namespace Rhino.Queues.Storage.Disk.Tests
 			var rnd = new Random();
 
 
-			IPersistentQueue _subject = new PersistentQueue("queue");
+			IPersistentQueue _subject = new PersistentQueue("queue_a");
 			var t1 = new Thread(() =>
 			{
 				for (int i = 0; i < target; i++)
@@ -68,7 +68,7 @@ namespace Rhino.Queues.Storage.Disk.Tests
 			{
 				for (int i = 0; i < target; i++)
 				{
-					using (var subject = PersistentQueue.WaitFor("queue", TimeSpan.FromSeconds(10)))
+					using (var subject = PersistentQueue.WaitFor("queue_b", TimeSpan.FromSeconds(10)))
 					{
 						using (var session = subject.OpenSession())
 						{
@@ -85,7 +85,7 @@ namespace Rhino.Queues.Storage.Disk.Tests
 			var t2 = new Thread(()=> {
 				for (int i = 0; i < target; i++)
 				{
-					using (var subject = PersistentQueue.WaitFor("queue", TimeSpan.FromSeconds(10)))
+					using (var subject = PersistentQueue.WaitFor("queue_b", TimeSpan.FromSeconds(10)))
 					{
 						using (var session = subject.OpenSession())
 						{
