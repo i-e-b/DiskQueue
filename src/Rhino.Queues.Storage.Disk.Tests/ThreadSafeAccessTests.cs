@@ -5,7 +5,7 @@ using NUnit.Framework;
 
 namespace Rhino.Queues.Storage.Disk.Tests
 {
-	[TestFixture]//, Explicit("Slow tests")]
+	[TestFixture]
 	public class ThreadSafeAccessTests
 	{
 		[Test]
