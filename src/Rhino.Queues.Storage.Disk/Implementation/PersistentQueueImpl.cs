@@ -435,11 +435,14 @@ namespace DiskQueue.Implementation
 				var count = BitConverter.GetBytes(EstimatedCountOfItemsInQueue);
 				ms.Write(count, 0, count.Length);
 
-				foreach (var entry in checkedOutEntries)
+				var checkedOut = checkedOutEntries.ToArray();
+				foreach (var entry in checkedOut)
 				{
 					WriteEntryToTransactionLog(ms, entry, OperationType.Enqueue);
 				}
-				foreach (var entry in entries)
+
+				var listedEntries = entries.ToArray();
+				foreach (var entry in listedEntries)
 				{
 					WriteEntryToTransactionLog(ms, entry, OperationType.Enqueue);
 				}
