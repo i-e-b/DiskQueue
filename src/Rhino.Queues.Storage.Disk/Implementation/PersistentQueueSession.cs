@@ -230,6 +230,7 @@ namespace DiskQueue.Implementation
 		/// </summary>
 		~PersistentQueueSession()
 		{
+			if (disposed) return;
 			Dispose();
 		}
 	}

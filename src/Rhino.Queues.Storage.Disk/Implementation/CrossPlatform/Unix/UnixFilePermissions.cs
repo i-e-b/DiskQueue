@@ -60,7 +60,7 @@ namespace DiskQueue.Implementation.CrossPlatform.Unix
 		/// <summary> Restrict delete, set all flags on execute, all permissions to all users </summary>
 		ALLPERMS = 4095u,
 		
-		/// <summary> Read & write, no execute for owner, group and others </summary>
+		/// <summary> Read and write, no execute for owner, group and others </summary>
 		DEFFILEMODE = 438u,
 		
 		/// <summary> Type of file flag </summary>

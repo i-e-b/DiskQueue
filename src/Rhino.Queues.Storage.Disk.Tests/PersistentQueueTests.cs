@@ -1,12 +1,10 @@
-using DiskQueue;
 using NUnit.Framework;
+using System;
+using System.Collections.Generic;
+using System.IO;
 
-namespace Rhino.Queues.Storage.Disk.Tests
+namespace DiskQueue.Tests
 {
-	using System;
-	using System.Collections.Generic;
-	using System.IO;
-
 	[TestFixture]
 	public class PersistentQueueTests : PersistentQueueTestsBase
 	{

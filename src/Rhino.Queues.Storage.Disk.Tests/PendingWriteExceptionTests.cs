@@ -1,11 +1,10 @@
 using DiskQueue.Implementation;
 using NUnit.Framework;
+using System;
+using System.Linq;
 
-namespace Rhino.Queues.Storage.Disk.Tests
+namespace DiskQueue.Tests
 {
-	using System;
-	using System.Linq;
-
 	[TestFixture]
 	public class PendingWriteExceptionTests
 	{

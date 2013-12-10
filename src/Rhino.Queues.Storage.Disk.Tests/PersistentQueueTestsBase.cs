@@ -1,10 +1,9 @@
 using System;
 using NUnit.Framework;
+using System.IO;
 
-namespace Rhino.Queues.Storage.Disk.Tests
+namespace DiskQueue.Tests
 {
-	using System.IO;
-
 	public class PersistentQueueTestsBase
 	{
 		protected const string path = @"./queue";

@@ -71,7 +71,7 @@ namespace DiskQueue
 		/// <summary>
 		/// Create or connect to a persistent store at the given storage path.
 		/// Uses specific maximum file size (files will be split if they exceed this size).
-		/// Throws UnauthorizedAccessException if you do not have read & write permissions.
+		/// Throws UnauthorizedAccessException if you do not have read and write permissions.
 		/// Throws InvalidOperationException if another instance is attached to the backing store.
 		/// </summary>
 		public PersistentQueue(string storagePath, int maxSize)
@@ -87,10 +87,17 @@ namespace DiskQueue
 			var local = Interlocked.Exchange(ref _queue, null);
 			if (local == null) return;
 			local.Dispose();
+			GC.SuppressFinalize(this);
 		}
 
+		/// <summary>
+		/// Dispose of the queue connection on destruction.
+		/// This is a safety valve. You should ensure you dispose
+		/// of connections properly.
+		/// </summary>
 		~PersistentQueue()
 		{
+			if (_queue == null) return;
 			Dispose();
 		}
 

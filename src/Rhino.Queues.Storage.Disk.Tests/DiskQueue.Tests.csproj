@@ -8,8 +8,8 @@
     <ProjectGuid>{1CE72DCA-61B7-4865-B5CB-191D04FB5B46}</ProjectGuid>
     <OutputType>Library</OutputType>
     <AppDesignerFolder>Properties</AppDesignerFolder>
-    <RootNamespace>Rhino.Queues.Storage.Disk.Tests</RootNamespace>
-    <AssemblyName>Rhino.Queues.Storage.Disk.Tests</AssemblyName>
+    <RootNamespace>DiskQueue.Tests</RootNamespace>
+    <AssemblyName>DiskQueue.Tests</AssemblyName>
     <TargetFrameworkVersion>v4.0</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
     <FileUpgradeFlags>

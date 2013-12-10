@@ -129,20 +129,16 @@ namespace DiskQueue.Implementation
 
 		public PersistentQueueImpl(string path) : this(path, _32Megabytes) { }
 
-		/// <summary>
-		/// Gets the estimated count of items in queue.
-		/// This is estimated number because it is not synced across threads
-		/// </summary>
-		/// <value>The estimated count of items in queue.</value>
 		public int EstimatedCountOfItemsInQueue
 		{
 			get { return entries.Count + checkedOutEntries.Count; }
 		}
 
 		/// <summary>
-		/// If true, each transaction commit will flush the transaction log.
-		/// This is slow, but ensures the log is correct per transaction in the event of a hard termination (i.e. power failure)
-		/// Defaults to true.
+		/// <para>Setting this to false may cause unexpected data loss in some failure conditions.</para>
+		/// <para>Defaults to true.</para>
+		/// <para>If true, each transaction commit will flush the transaction log.</para>
+		/// <para>This is slow, but ensures the log is correct per transaction in the event of a hard termination (i.e. power failure)</para>
 		/// </summary>
 		public bool ParanoidFlushing { get; set; }
 
@@ -174,8 +170,10 @@ namespace DiskQueue.Implementation
 
 		~PersistentQueueImpl()
 		{
+			if (disposed) return;
 			Dispose();
 		}
+
 		public void Dispose()
 		{
 			lock (_configLock)
@@ -188,6 +186,7 @@ namespace DiskQueue.Implementation
 					{
 						if (TrimTransactionLogOnDispose) FlushTrimmedTransactionLog();
 					}
+					GC.SuppressFinalize(this);
 				}
 				finally
 				{

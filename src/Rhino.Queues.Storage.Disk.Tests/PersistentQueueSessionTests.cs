@@ -1,14 +1,12 @@
-using DiskQueue;
 using DiskQueue.Implementation;
 using NSubstitute;
 using NSubstitute.Core;
 using NUnit.Framework;
+using System;
+using System.IO;
 
-namespace Rhino.Queues.Storage.Disk.Tests
+namespace DiskQueue.Tests
 {
-	using System;
-	using System.IO;
-
 	[TestFixture]
 	public class PersistentQueueSessionTests : PersistentQueueTestsBase
 	{

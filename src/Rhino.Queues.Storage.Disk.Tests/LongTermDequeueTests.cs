@@ -1,10 +1,8 @@
 ﻿using System;
-using System.IO;
 using System.Linq;
-using DiskQueue;
 using NUnit.Framework;
 
-namespace Rhino.Queues.Storage.Disk.Tests
+namespace DiskQueue.Tests
 {
 	[TestFixture]
 	public class LongTermDequeueTests
