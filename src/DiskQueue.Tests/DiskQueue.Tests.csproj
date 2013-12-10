@@ -67,6 +67,7 @@
   <ItemGroup>
     <Compile Include="CountOfItemsPersistentQueueTests.cs" />
     <Compile Include="LongTermDequeueTests.cs" />
+    <Compile Include="ParanoidFlushingTests.cs" />
     <Compile Include="ThreadSafeAccessTests.cs" />
     <Compile Include="MultiFileQueueTests.cs" />
     <Compile Include="PendingWriteExceptionTests.cs" />
@@ -78,7 +79,7 @@
     <Compile Include="TransactionLogTests.cs" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\Rhino.Queues.Storage.Disk\DiskQueue.csproj">
+    <ProjectReference Include="..\DiskQueue\DiskQueue.csproj">
       <Project>{D3F1301E-3C40-4FE5-9FF3-5D95D3A4F7E5}</Project>
       <Name>DiskQueue</Name>
     </ProjectReference>
