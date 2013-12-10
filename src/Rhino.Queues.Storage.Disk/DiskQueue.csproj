@@ -49,7 +49,7 @@
     <Compile Include="Implementation\Constants.cs" />
     <Compile Include="Implementation\CrossPlatform\Unix\UnixFilePermissions.cs" />
     <Compile Include="SetPermissions.cs" />
-    <Compile Include="Implementation\CrossPlatform\Unix\CoreUnixCalls.cs" />
+    <Compile Include="Implementation\CrossPlatform\Unix\UnsafeNativeMethods.cs" />
     <Compile Include="Implementation\Entry.cs" />
     <Compile Include="Implementation\Extensions.cs" />
     <Compile Include="IPersistentQueue.cs" />

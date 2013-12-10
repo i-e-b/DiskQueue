@@ -56,7 +56,7 @@ namespace DiskQueue
 		{
 			if (RunningUnderPosix)
 			{
-				CoreUnixCalls.chmod(path, UnixFilePermissions.ACCESSPERMS);
+				UnsafeNativeMethods.chmod(path, UnixFilePermissions.ACCESSPERMS);
 			}
 			else
 			{
@@ -71,7 +71,7 @@ namespace DiskQueue
 		{
 			if (RunningUnderPosix)
 			{
-				CoreUnixCalls.chmod(path, UnixFilePermissions.ACCESSPERMS);
+				UnsafeNativeMethods.chmod(path, UnixFilePermissions.ACCESSPERMS);
 			}
 			else
 			{

@@ -5,9 +5,10 @@ namespace DiskQueue.Implementation.CrossPlatform.Unix
 	/// <summary>
 	/// Unix calls
 	/// </summary>
-	public class CoreUnixCalls
+	public class UnsafeNativeMethods
 	{
-		[DllImport("libc", EntryPoint = "chmod", SetLastError = true)]
+		[DllImport("libc", EntryPoint = "chmod", SetLastError = true,
+			CharSet = CharSet.Ansi, BestFitMapping = false, ThrowOnUnmappableChar = true)]
 		static extern int sys_chmod(string path, uint mode);
 
 		/// <summary>

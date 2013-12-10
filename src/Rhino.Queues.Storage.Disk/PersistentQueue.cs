@@ -13,7 +13,7 @@ namespace DiskQueue
 	/// <para>If you want to share the store between threads in one process, you may share the Persistent Queue and
 	/// have each thread call `OpenSession` for itself.</para>
 	/// </summary>
-	public class PersistentQueue : IPersistentQueue
+	public sealed class PersistentQueue : IPersistentQueue
 	{
 		PersistentQueueImpl _queue;
 
@@ -82,6 +82,7 @@ namespace DiskQueue
 		/// <summary>
 		/// Close this queue connection. Does not destroy flushed data.
 		/// </summary>
+		[System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Usage", "CA2213:DisposableFieldsShouldBeDisposed", MessageId = "_queue", Justification = "Disposed in an interlock")]
 		public void Dispose()
 		{
 			var local = Interlocked.Exchange(ref _queue, null);
