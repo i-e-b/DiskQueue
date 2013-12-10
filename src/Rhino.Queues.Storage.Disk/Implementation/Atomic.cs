@@ -53,18 +53,25 @@ namespace DiskQueue.Implementation
 	{
 		static readonly object _lock = new object();
 		
-		public static void Read(string name, Action<Stream> action)
+		/// <summary>
+		/// Run a read action over a file by name.
+		/// Access is optimised for sequential scanning.
+		/// No file share is permitted.
+		/// </summary>
+		/// <param name="path">File path to read</param>
+		/// <param name="action">Action to consume file stream. You do not need to close the stream yourself.</param>
+		public static void Read(string path, Action<Stream> action)
 		{
 			lock (_lock)
 			{
-				if (File.Exists(name + ".old_copy"))
+				if (File.Exists(path + ".old_copy"))
 				{
-					if (WaitDelete(name))
-						File.Move(name + ".old_copy", name);
+					if (WaitDelete(path))
+						File.Move(path + ".old_copy", path);
 				}
 
 				using (
-					var stream = new FileStream(name,
+					var stream = new FileStream(path,
 					                            FileMode.OpenOrCreate,
 					                            FileAccess.Read,
 					                            FileShare.None,
@@ -72,24 +79,30 @@ namespace DiskQueue.Implementation
 					                            FileOptions.SequentialScan)
 					)
 				{
-					SetPermissions.TryAllowReadWriteForAll(name);
+					SetPermissions.TryAllowReadWriteForAll(path);
 					action(stream);
 				}
 			}
 		}
 
-		public static void Write(string name, Action<Stream> action)
+		/// <summary>
+		/// Run a write action to a file.
+		/// This will always rewrite the file (no appending).
+		/// </summary>
+		/// <param name="path">File path to write</param>
+		/// <param name="action">Action to write into file stream. You do not need to close the stream yourself.</param>
+		public static void Write(string path, Action<Stream> action)
 		{
 			lock (_lock)
 			{
 				// if the old copy file exists, this means that we have
 				// a previous corrupt write, so we will not overrite it, but 
 				// rather overwrite the current file and keep it as our backup.
-				if (File.Exists(name + ".old_copy") == false)
-					File.Move(name, name + ".old_copy");
+				if (File.Exists(path + ".old_copy") == false)
+					File.Move(path, path + ".old_copy");
 
 				using (
-					var stream = new FileStream(name,
+					var stream = new FileStream(path,
 					                            FileMode.Create,
 					                            FileAccess.Write,
 					                            FileShare.None,
@@ -97,12 +110,12 @@ namespace DiskQueue.Implementation
 					                            FileOptions.WriteThrough | FileOptions.SequentialScan)
 					)
 				{
-					SetPermissions.TryAllowReadWriteForAll(name);
+					SetPermissions.TryAllowReadWriteForAll(path);
 					action(stream);
 					stream.Flush();
 				}
 				
-				WaitDelete(name + ".old_copy");
+				WaitDelete(path + ".old_copy");
 			}
 		}
 

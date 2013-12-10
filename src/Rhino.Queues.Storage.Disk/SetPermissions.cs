@@ -6,8 +6,14 @@ using DiskQueue.Implementation.CrossPlatform.Unix;
 
 namespace DiskQueue
 {
+	/// <summary>
+	/// File permission tools for Windows and Linux
+	/// </summary>
 	public static class SetPermissions
 	{
+		/// <summary>
+		/// True if running in a Posix environment, false if Windows or unknown.
+		/// </summary>
 		public static bool RunningUnderPosix
 		{
 			get
@@ -23,8 +29,8 @@ namespace DiskQueue
 		/// </summary>
 		public static void AllowReadWriteForAll(string path)
 		{
-			if (Directory.Exists(path)) DirectoryRWall(path);
-			else if (File.Exists(path)) FileRWall(path);
+			if (Directory.Exists(path)) Directory_RWX_all(path);
+			else if (File.Exists(path)) File_RWX_all(path);
 			else throw new UnauthorizedAccessException("Can't access the path \"" + path + "\"");
 		}
 
@@ -35,8 +41,8 @@ namespace DiskQueue
 		{
 			try
 			{
-				if (Directory.Exists(path)) DirectoryRWall(path);
-				else if (File.Exists(path)) FileRWall(path);
+				if (Directory.Exists(path)) Directory_RWX_all(path);
+				else if (File.Exists(path)) File_RWX_all(path);
 			}
 			catch
 			{
@@ -46,7 +52,7 @@ namespace DiskQueue
 
 		static void Ignore() { }
 
-		static void FileRWall(string path)
+		static void File_RWX_all(string path)
 		{
 			if (RunningUnderPosix)
 			{
@@ -61,7 +67,7 @@ namespace DiskQueue
 			}
 		}
 
-		static void DirectoryRWall(string path)
+		static void Directory_RWX_all(string path)
 		{
 			if (RunningUnderPosix)
 			{
