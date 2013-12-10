@@ -6,6 +6,11 @@ using System.Threading;
 
 namespace DiskQueue.Implementation
 {
+	/// <summary>
+	/// Default persistent queue session.
+	/// <para>You should use <see cref="IPersistentQueue.OpenSession"/> to get a session.</para>
+	/// <example>using (var q = PersistentQueue.WaitFor("myQueue")) using (var session = q.OpenSession()) { ... }</example>
+	/// </summary>
 	public class PersistentQueueSession : IPersistentQueueSession
 	{
 		private readonly List<Operation> operations = new List<Operation>();
@@ -23,6 +28,11 @@ namespace DiskQueue.Implementation
 
 		private const int MinSizeThatMakeAsyncWritePractical = 64 * 1024;
 
+		/// <summary>
+		/// Create a default persistent queue session.
+		/// <para>You should use <see cref="IPersistentQueue.OpenSession"/> to get a session.</para>
+		/// <example>using (var q = PersistentQueue.WaitFor("myQueue")) using (var session = q.OpenSession()) { ... }</example>
+		/// </summary>
 		public PersistentQueueSession(IPersistentQueueImpl queue, Stream currentStream, int writeBufferSize)
 		{
 			lock (_ctorLock)
@@ -36,6 +46,9 @@ namespace DiskQueue.Implementation
 			}
 		}
 
+		/// <summary>
+		/// Queue data for a later decode. Data is written on `Flush()`
+		/// </summary>
 		public void Enqueue(byte[] data)
 		{
 			buffer.Add(data);
@@ -116,6 +129,9 @@ namespace DiskQueue.Implementation
 			currentStream = newStream;
 		}
 
+		/// <summary>
+		/// Try to pull data from the queue. Data is removed from the queue on `Flush()`
+		/// </summary>
 		public byte[] Dequeue()
 		{
 			var entry = queue.Dequeue();
@@ -130,6 +146,11 @@ namespace DiskQueue.Implementation
 			return entry.Data;
 		}
 
+		/// <summary>
+		/// Commit actions taken in this session since last flush.
+		/// If the session is disposed with no flush, actions are not persisted 
+		/// to the queue (Enqueues are not written, dequeues are left on the queue)
+		/// </summary>
 		public void Flush()
 		{
 			try
@@ -182,6 +203,9 @@ namespace DiskQueue.Implementation
 			}
 		}
 
+		/// <summary>
+		/// Close session, restoring any non-flushed operations
+		/// </summary>
 		public void Dispose()
 		{
 			lock (_ctorLock)
@@ -200,6 +224,10 @@ namespace DiskQueue.Implementation
 			Thread.Sleep(0);
 		}
 
+		/// <summary>
+		/// Dispose queue on destructor. This is a safty-valve. You should ensure you
+		/// dispose of sessions normally.
+		/// </summary>
 		~PersistentQueueSession()
 		{
 			Dispose();

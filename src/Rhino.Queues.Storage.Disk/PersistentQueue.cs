@@ -60,8 +60,8 @@ namespace DiskQueue
 
 		/// <summary>
 		/// Create or connect to a persistent store at the given storage path.
-		/// Throws UnauthorizedAccessException if you do not have read & write permissions.
-		/// Throws InvalidOperationException if another instance is attached to the backing store.
+		/// <para>Throws UnauthorizedAccessException if you do not have read and write permissions.</para>
+		/// <para>Throws InvalidOperationException if another instance is attached to the backing store.</para>
 		/// </summary>
 		public PersistentQueue(string storagePath)
 		{

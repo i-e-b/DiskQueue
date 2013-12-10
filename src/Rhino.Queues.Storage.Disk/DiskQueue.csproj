@@ -47,6 +47,7 @@
   <ItemGroup>
     <Compile Include="Implementation\Atomic.cs" />
     <Compile Include="Implementation\Constants.cs" />
+    <Compile Include="Implementation\CrossPlatform\Unix\UnixFilePermissions.cs" />
     <Compile Include="SetPermissions.cs" />
     <Compile Include="Implementation\CrossPlatform\Unix\CoreUnixCalls.cs" />
     <Compile Include="Implementation\Entry.cs" />

@@ -29,21 +29,34 @@ using System.Text;
 
 namespace DiskQueue.Implementation
 {
+	/// <summary>
+	/// Exception thrown when data can't be persisted
+	/// </summary>
+	[Serializable]
 	public class PendingWriteException : Exception
 	{
 		private readonly Exception[] pendingWritesExceptions;
 
+		/// <summary>
+		/// Aggregate causing exceptions
+		/// </summary>
 		public PendingWriteException(Exception[] pendingWritesExceptions)
 			: base("Error during pending writes")
 		{
 			this.pendingWritesExceptions = pendingWritesExceptions;
 		}
 
+		/// <summary>
+		/// Set of causing exceptions
+		/// </summary>
 		public Exception[] PendingWritesExceptions
 		{
 			get { return pendingWritesExceptions; }
 		}
 
+		/// <summary>
+		/// Gets a message that describes the current exception.
+		/// </summary>
 		public override string Message
 		{
 			get
@@ -57,6 +70,9 @@ namespace DiskQueue.Implementation
 			}
 		}
 
+		/// <summary>
+		/// Creates and returns a string representation of the current exception.
+		/// </summary>
 		public override string ToString()
 		{
 			var sb = new StringBuilder(base.Message).Append(":");

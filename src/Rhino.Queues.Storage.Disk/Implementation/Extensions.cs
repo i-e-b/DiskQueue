@@ -2,8 +2,15 @@ using System.Collections.Generic;
 
 namespace DiskQueue.Implementation
 {
+	/// <summary>
+	/// Internal extension methods
+	/// </summary>
 	public static class Extensions
 	{
+		/// <summary>
+		/// Ensure a key is present in the dictionary. Uses default value if needed.
+		/// Return stored value for the key
+		/// </summary>
 		public static T GetOrCreateValue<T,K>(this IDictionary<K,T> self, K key)
 			where T : new()
 		{
@@ -16,12 +23,14 @@ namespace DiskQueue.Implementation
 			return value;
 		}
 
+		/// <summary>
+		/// Return value for key if present, otherwise return default.
+		/// No new keys or values will be added to the dictionary.
+		/// </summary>
 		public static T GetValueOrDefault<T, K>(this IDictionary<K, T> self, K key)
 		{
 			T value;
-			if (self.TryGetValue(key, out value) == false)
-				return default(T);
-			return value;
+			return self.TryGetValue(key, out value) == false ? default(T) : value;
 		}
 	}
 }
