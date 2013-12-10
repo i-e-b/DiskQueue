@@ -103,7 +103,7 @@ E.g.
 ...
 void AddToQueue(byte[] data) {
 	Thread.Sleep(150);
-	using (var queue = PersistentQueue.WaitFor(SharedStorage, TimeSpan.FromSeconds(30))
+	using (var queue = PersistentQueue.WaitFor(SharedStorage, TimeSpan.FromSeconds(30)))
 	using (var session = queue.OpenSession()) {
 		session.Enqueue(data);
 		session.Flush();
@@ -112,12 +112,12 @@ void AddToQueue(byte[] data) {
 
 byte[] ReadQueue() {
 	Thread.Sleep(150);
-	using (var queue = PersistentQueue.WaitFor(SharedStorage, TimeSpan.FromSeconds(30))
+	using (var queue = PersistentQueue.WaitFor(SharedStorage, TimeSpan.FromSeconds(30)))
 	using (var session = queue.OpenSession()) {
 		var data = session.Dequeue();
 		session.Flush();
+		return data;
 	}
-	return data;
 }
 ...
 

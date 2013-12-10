@@ -67,6 +67,7 @@
   <ItemGroup>
     <Compile Include="CountOfItemsPersistentQueueTests.cs" />
     <Compile Include="LongTermDequeueTests.cs" />
+    <Compile Include="MultipleProcessAccessTests.cs" />
     <Compile Include="ParanoidFlushingTests.cs" />
     <Compile Include="ThreadSafeAccessTests.cs" />
     <Compile Include="MultiFileQueueTests.cs" />
