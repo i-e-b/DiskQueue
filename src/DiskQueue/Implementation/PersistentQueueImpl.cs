@@ -102,6 +102,7 @@ namespace DiskQueue.Implementation
 
 		void UnlockQueue()
 		{
+			if (path == null) return;
 			var target = Path.Combine(path, "lock");
 			if (fileLock != null)
 			{
