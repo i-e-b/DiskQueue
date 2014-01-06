@@ -1,6 +1,8 @@
 obj
 bin
 deploy
+packages/
+.nuget/*.exe
 *.csproj.user
 *.suo
 *.cache
