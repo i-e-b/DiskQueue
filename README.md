@@ -1,7 +1,8 @@
 DiskQueue
 =========
+[![Build status](https://ci.appveyor.com/api/projects/status/vjb9wy6qn2qangyl)](https://ci.appveyor.com/project/i-e-b/diskqueue)
 
-A thread-safe, multi-process(ish) persistent queue, based very heavily on ( http://ayende.com/blog/3479/rhino-queues-storage-disk ).
+A thread-safe, multi-process(ish) persistent queue, based very heavily on  http://ayende.com/blog/3479/rhino-queues-storage-disk .
 
 Requirements and Environment
 ----------------------------
