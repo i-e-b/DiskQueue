@@ -338,6 +338,7 @@ namespace DiskQueue.Implementation
 		private byte[] ReadEntriesFromFile(Entry firstEntry, long currentBufferSize)
 		{
 			var buffer = new byte[currentBufferSize];
+		    if (firstEntry.Length < 1) return buffer;
 			using (var reader = new FileStream(GetDataPath(firstEntry.FileNumber),
 											   FileMode.OpenOrCreate, FileAccess.Read, FileShare.ReadWrite))
 			{

@@ -216,7 +216,7 @@ namespace DiskQueue.Tests
 
 			using (var txLog = txLogInfo.Open(FileMode.Open))
 			{
-				txLog.SetLength(5);// corrupt last transaction
+				txLog.SetLength(5); // truncate log to halfway through start marker
 				txLog.Flush();
 			}
 
@@ -230,7 +230,206 @@ namespace DiskQueue.Tests
 			}
 		}
 
-		[Test]
+        
+	    [Test]
+	    public void Can_handle_truncated_data()
+	    {
+	        var txLogInfo = new FileInfo(Path.Combine(path, "transaction.log"));
+
+	        using (var queue = new PersistentQueue(path)
+	        {
+	            // avoid auto tx log trimming
+	            TrimTransactionLogOnDispose = false
+	        })
+	        {
+	            using (var session = queue.OpenSession())
+	            {
+	                for (int j = 0; j < 20; j++)
+	                {
+	                    session.Enqueue(BitConverter.GetBytes(j));
+	                    session.Flush();
+	                }
+	            }
+	        }
+
+	        using (var txLog = txLogInfo.Open(FileMode.Open))
+	        {
+	            txLog.SetLength(100); // truncate log to halfway through log entry
+	            txLog.Flush();
+	        }
+
+	        using (var queue = new PersistentQueue(path))
+	        {
+	            using (var session = queue.OpenSession())
+	            {
+	                Assert.IsNull(session.Dequeue());// the last transaction was corrupted
+	                session.Flush();
+	            }
+	        }
+	    }
+
+	    [Test]
+	    public void Can_handle_truncated_end_transaction_separator()
+	    {
+	        var txLogInfo = new FileInfo(Path.Combine(path, "transaction.log"));
+
+	        using (var queue = new PersistentQueue(path)
+	        {
+	            // avoid auto tx log trimming
+	            TrimTransactionLogOnDispose = false
+	        })
+	        {
+	            using (var session = queue.OpenSession())
+	            {
+	                for (int j = 0; j < 20; j++)
+	                {
+	                    session.Enqueue(BitConverter.GetBytes(j));
+	                    session.Flush();
+	                }
+	            }
+	        }
+
+	        using (var txLog = txLogInfo.Open(FileMode.Open))
+	        {
+	            txLog.SetLength(368); // truncate end transaction marker
+	            txLog.Flush();
+	        }
+
+	        using (var queue = new PersistentQueue(path))
+	        {
+	            using (var session = queue.OpenSession())
+	            {
+	                Assert.IsNull(session.Dequeue());// the last transaction was corrupted
+	                session.Flush();
+	            }
+	        }
+	    }
+
+	    [Test]
+	    public void Can_handle_zero_length_transaction()
+	    {
+	        using (var queue = new PersistentQueue(path)
+	        {
+	            // avoid auto tx log trimming
+	            TrimTransactionLogOnDispose = false
+	        })
+	        {
+	            using (var session = queue.OpenSession())
+	            {
+	                for (int j = 0; j < 20; j++)
+	                {
+	                    session.Enqueue(new byte[0]);
+	                    session.Flush();
+	                }
+	            }
+	        }
+
+	        using (var queue = new PersistentQueue(path))
+	        {
+	            using (var session = queue.OpenSession())
+	            {
+	                Assert.IsNotNull(session.Dequeue());
+	                session.Flush();
+	            }
+	        }
+	    }
+        
+	    [Test]
+	    public void Can_handle_empty_transaction()
+	    {
+	        using (var queue = new PersistentQueue(path)
+	        {
+	            // avoid auto tx log trimming
+	            TrimTransactionLogOnDispose = false
+	        })
+            {
+                using (var session = queue.OpenSession())
+                {
+                    session.Flush();
+                }
+            }
+
+            using (var queue = new PersistentQueue(path))
+	        {
+	            using (var session = queue.OpenSession())
+	            {
+	                Assert.IsNull(session.Dequeue());
+	                session.Flush();
+	            }
+	        }
+	    }
+
+        
+	    [Test]
+	    public void Can_handle_zero_length_entries_at_start()
+	    {
+	        using (var queue = new PersistentQueue(path)
+	        {
+	            // avoid auto tx log trimming
+	            TrimTransactionLogOnDispose = false
+	        })
+	        {
+	            using (var session = queue.OpenSession())
+	            {
+	                session.Enqueue(new byte[0]);
+	                session.Flush();
+	                for (int j = 0; j < 19; j++)
+	                {
+	                    session.Enqueue(new byte[] {1});
+	                    session.Flush();
+	                }
+	            }
+	        }
+
+	        using (var queue = new PersistentQueue(path))
+	        {
+	            using (var session = queue.OpenSession())
+	            {
+	                for (int j = 0; j < 20; j++)
+	                {
+	                    Assert.IsNotNull(session.Dequeue());
+	                    session.Flush();
+	                }
+	            }
+	        }
+	    }
+
+        
+	    [Test]
+	    public void Can_handle_zero_length_entries_at_end()
+	    {
+	        using (var queue = new PersistentQueue(path)
+	        {
+	            // avoid auto tx log trimming
+	            TrimTransactionLogOnDispose = false
+	        })
+	        {
+	            using (var session = queue.OpenSession())
+	            {
+	                for (int j = 0; j < 19; j++)
+	                {
+	                    session.Enqueue(new byte[] {1});
+	                    session.Flush();
+	                }
+	                session.Enqueue(new byte[0]);
+	                session.Flush();
+	            }
+	        }
+
+	        using (var queue = new PersistentQueue(path))
+	        {
+	            using (var session = queue.OpenSession())
+	            {
+	                for (int j = 0; j < 20; j++)
+	                {
+	                    Assert.IsNotNull(session.Dequeue());
+	                    session.Flush();
+	                }
+	            }
+	        }
+	    }
+
+	    [Test]
 		public void Will_remove_truncated_transaction()
 		{
 			var txLogInfo = new FileInfo(Path.Combine(path, "transaction.log"));
