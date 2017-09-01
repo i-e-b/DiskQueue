@@ -2,8 +2,7 @@ using NUnit.Framework;
 
 namespace DiskQueue.Tests
 {
-
-	[TestFixture]
+    [TestFixture]
 	public class CountOfItemsPersistentQueueTests : PersistentQueueTestsBase
 	{
 		[Test]

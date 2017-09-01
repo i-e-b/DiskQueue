@@ -36,8 +36,7 @@ namespace DiskQueue.Implementation
 	{
 		private readonly HashSet<Entry> checkedOutEntries = new HashSet<Entry>();
 
-		private readonly Dictionary<int, int> countOfItemsPerFile =
-			new Dictionary<int, int>();
+		private readonly Dictionary<int, int> countOfItemsPerFile = new Dictionary<int, int>();
 
 		private readonly LinkedList<Entry> entries = new LinkedList<Entry>();
 
@@ -45,15 +44,17 @@ namespace DiskQueue.Implementation
 
 		private readonly object transactionLogLock = new object();
 		private readonly object writerLock = new object();
-		static readonly object _configLock = new object();
-		volatile bool disposed;
+	    private static readonly object _configLock = new object();
+	    private volatile bool disposed;
 		private FileStream fileLock;
-		const int _32Megabytes = 32*1024*1024;
+		private const int _32Megabytes = 32*1024*1024;
 
 		public bool TrimTransactionLogOnDispose { get; set; }
 		public int SuggestedReadBuffer { get; set; }
 		public int SuggestedWriteBuffer { get; set; }
 		public long SuggestedMaxTransactionLogSize { get; set; }
+
+	    public readonly int MaxFileSize;
 
 		public PersistentQueueImpl(string path, int maxFileSize)
 		{
@@ -154,7 +155,6 @@ namespace DiskQueue.Implementation
 			}
 		}
 
-		public int MaxFileSize { get; private set; }
 		public long CurrentFilePosition { get; private set; }
 
 		private string TransactionLog
@@ -290,13 +290,16 @@ namespace DiskQueue.Implementation
 				entries.RemoveFirst();
 				// we need to create a copy so we will not hold the data
 				// in memory as well as the position
-				checkedOutEntries.Add(new Entry(entry.FileNumber, entry.Start, entry.Length));
-				return entry;
+			    lock (checkedOutEntries)
+			    {
+			        checkedOutEntries.Add(new Entry(entry.FileNumber, entry.Start, entry.Length));
+			    }
+			    return entry;
 			}
 		}
 
 		/// <summary>
-		/// Assumes that entries has at least one entry
+		/// Assumes that entries has at least one entry. Should be called inside a lock.
 		/// </summary>
 		private void ReadAhead()
 		{
@@ -386,12 +389,18 @@ namespace DiskQueue.Implementation
 						int txCount = 0;
 						while (true)
 						{
+                            // TODO: need to ensure that a truncated log is recoverable in some way.
+                            //       It would be OK to require a specific flag as acceptance that
+                            //       silent data loss is possible.
+
+
 							txCount += 1;
 							// this code ensures that we read the full transaction
 							// before we start to apply it. The last truncated transaction will be
 							// ignored automatically.
-							AssertTransactionSeperator(binaryReader, txCount, Constants.StartTransactionSeparatorGuid,
+							AssertTransactionSeperator(binaryReader, txCount, Marker.StartTransaction,
 													   () => readingTransaction = true);
+
 							var opsCount = binaryReader.ReadInt32();
 							var txOps = new List<Operation>(opsCount);
 							for (var i = 0; i < opsCount; i++)
@@ -410,7 +419,8 @@ namespace DiskQueue.Implementation
 								if (operation.Type != OperationType.Enqueue)
 									requireTxLogTrimming = true;
 							}
-							AssertTransactionSeperator(binaryReader, txCount, Constants.EndTransactionSeparatorGuid, () => { });
+                            // check that the end marker is in place
+							AssertTransactionSeperator(binaryReader, txCount, Marker.EndTransaction, () => { });
 							readingTransaction = false;
 							ApplyTransactionOperations(txOps);
 						}
@@ -434,15 +444,24 @@ namespace DiskQueue.Implementation
 
 				var count = BitConverter.GetBytes(EstimatedCountOfItemsInQueue);
 				ms.Write(count, 0, count.Length);
-
-				var checkedOut = checkedOutEntries.ToArray();
-				foreach (var entry in checkedOut)
+                
+			    Entry[] checkedOut;
+			    lock (checkedOutEntries)
+			    {
+			        checkedOut = checkedOutEntries.ToArray();
+			    }
+			    foreach (var entry in checkedOut)
 				{
 					WriteEntryToTransactionLog(ms, entry, OperationType.Enqueue);
 				}
 
-				var listedEntries = entries.ToArray();
-				foreach (var entry in listedEntries)
+			    Entry[] listedEntries;
+                lock (entries)
+                {
+                    listedEntries = ToArray(entries);
+			    }
+
+			    foreach (var entry in listedEntries)
 				{
 					WriteEntryToTransactionLog(ms, entry, OperationType.Enqueue);
 				}
@@ -457,7 +476,23 @@ namespace DiskQueue.Implementation
 			});
 		}
 
-		private static void WriteEntryToTransactionLog(Stream ms, Entry entry, OperationType operationType)
+        /// <summary>
+        /// This special purpose function is to work around potential issues with Mono
+        /// </summary>
+	    private static Entry[] ToArray(LinkedList<Entry> list)
+        {
+            if (list == null) return new Entry[0];
+            var outp = new List<Entry>(25);
+            var cur = list.First;
+            while (cur != null)
+            {
+                outp.Add(cur.Value);
+                cur = cur.Next;
+            }
+            return outp.ToArray();
+        }
+
+	    private static void WriteEntryToTransactionLog(Stream ms, Entry entry, OperationType operationType)
 		{
 			ms.Write(Constants.OperationSeparatorBytes, 0, Constants.OperationSeparatorBytes.Length);
 
@@ -496,7 +531,10 @@ namespace DiskQueue.Implementation
 
 					case OperationType.Dequeue:
 						var entryToRemove = new Entry(operation);
-						checkedOutEntries.Remove(entryToRemove);
+						lock (checkedOutEntries)
+						{
+						    checkedOutEntries.Remove(entryToRemove);
+						}
 						var itemCountRemoval = countOfItemsPerFile.GetValueOrDefault(entryToRemove.FileNumber);
 						countOfItemsPerFile[entryToRemove.FileNumber] = itemCountRemoval - 1;
 						break;
@@ -504,7 +542,10 @@ namespace DiskQueue.Implementation
 					case OperationType.Reinstate:
 						var entryToReistate = new Entry(operation);
 						entries.AddFirst(entryToReistate);
-						checkedOutEntries.Remove(entryToReistate);
+						lock (checkedOutEntries)
+						{
+						    checkedOutEntries.Remove(entryToReistate);
+						}
 						break;
 				}
 			}
@@ -522,12 +563,11 @@ namespace DiskQueue.Implementation
 			return filesToRemove.ToArray();
 		}
 
-		private static void AssertTransactionSeperator(
-			BinaryReader binaryReader, int txCount, Guid expectedValue, Action hasData)
+		private static void AssertTransactionSeperator(BinaryReader binaryReader, int txCount, Marker whichSeparator, Action hasData)
 		{
 			var bytes = binaryReader.ReadBytes(16);
-			if (bytes.Length == 0)
-				throw new EndOfStreamException();
+			if (bytes.Length == 0) throw new EndOfStreamException();
+
 			hasData();
 			if (bytes.Length != 16)
 			{
@@ -537,13 +577,34 @@ namespace DiskQueue.Implementation
 				{
 					throw new EndOfStreamException();
 				}
-				throw new InvalidOperationException(
-					"Unexpected data in transaction log. Expected to get transaction separator but got truncated data. Tx #" + txCount);
+				throw new InvalidOperationException("Unexpected data in transaction log. Expected to get transaction separator but got truncated data. Tx #" + txCount);
 			}
+
+		    Guid expectedValue, otherValue;
+		    Marker otherSeparator;
+		    if (whichSeparator == Marker.StartTransaction)
+		    {
+		        expectedValue = Constants.StartTransactionSeparatorGuid;
+		        otherValue = Constants.EndTransactionSeparatorGuid;
+		        otherSeparator = Marker.EndTransaction;
+		    }
+		    else if (whichSeparator == Marker.EndTransaction)
+		    {
+		        expectedValue = Constants.EndTransactionSeparatorGuid;
+		        otherValue = Constants.StartTransactionSeparatorGuid;
+		        otherSeparator = Marker.StartTransaction;
+		    }
+		    else throw new InvalidProgramException("Wrong kind of separator in inner implementation");
+
 			var separator = new Guid(bytes);
-			if (separator != expectedValue)
-				throw new InvalidOperationException(
-					"Unexpected data in transaction log. Expected to get transaction separator but got unknown data. Tx #" + txCount);
+		    if (separator != expectedValue)
+		    {
+		        if (separator == otherValue) // found a marker, but of the wrong type
+		        {
+                    throw new InvalidOperationException("Unexpected data in transaction log. Expected " + whichSeparator + " but found " + otherSeparator);
+                }
+                throw new InvalidOperationException("Unexpected data in transaction log. Expected to get transaction separator but got unknown data. Tx #" + txCount);
+		    }
 		}
 
 

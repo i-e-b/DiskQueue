@@ -67,6 +67,7 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="ConstantChecks.cs" />
     <Compile Include="CountOfItemsPersistentQueueTests.cs" />
     <Compile Include="LongTermDequeueTests.cs" />
     <Compile Include="MultipleProcessAccessTests.cs" />
