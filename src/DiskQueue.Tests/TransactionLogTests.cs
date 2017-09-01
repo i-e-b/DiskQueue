@@ -2,6 +2,7 @@ using NUnit.Framework;
 using System;
 using System.Collections.Generic;
 using System.IO;
+using DiskQueue.Implementation;
 
 namespace DiskQueue.Tests
 {
@@ -230,7 +231,6 @@ namespace DiskQueue.Tests
 			}
 		}
 
-        
 	    [Test]
 	    public void Can_handle_truncated_data()
 	    {
@@ -305,8 +305,10 @@ namespace DiskQueue.Tests
 	        }
 	    }
 
+
+
 	    [Test]
-	    public void Can_handle_zero_length_transaction()
+	    public void Can_handle_transaction_with_only_zero_length_entries()
 	    {
 	        using (var queue = new PersistentQueue(path)
 	        {
@@ -328,14 +330,18 @@ namespace DiskQueue.Tests
 	        {
 	            using (var session = queue.OpenSession())
 	            {
-	                Assert.IsNotNull(session.Dequeue());
+	                for (int j = 0; j < 20; j++)
+	                {
+	                    Assert.IsEmpty(session.Dequeue());
+	                }
+	                Assert.IsNull(session.Dequeue());
 	                session.Flush();
 	            }
 	        }
 	    }
         
 	    [Test]
-	    public void Can_handle_empty_transaction()
+	    public void Can_handle_end_separator_used_as_data()
 	    {
 	        using (var queue = new PersistentQueue(path)
 	        {
@@ -345,6 +351,11 @@ namespace DiskQueue.Tests
             {
                 using (var session = queue.OpenSession())
                 {
+                    for (int j = 0; j < 20; j++)
+                    {
+                        session.Enqueue(Constants.EndTransactionSeparator); // ???
+                        session.Flush();
+                    }
                     session.Flush();
                 }
             }
@@ -353,12 +364,41 @@ namespace DiskQueue.Tests
 	        {
 	            using (var session = queue.OpenSession())
 	            {
-	                Assert.IsNull(session.Dequeue());
+	                Assert.AreEqual(Constants.EndTransactionSeparator, session.Dequeue());
 	                session.Flush();
 	            }
 	        }
 	    }
+        
+	    [Test]
+	    public void Can_handle_start_separator_used_as_data()
+	    {
+	        using (var queue = new PersistentQueue(path)
+	        {
+	            // avoid auto tx log trimming
+	            TrimTransactionLogOnDispose = false
+	        })
+	        {
+	            using (var session = queue.OpenSession())
+	            {
+	                for (int j = 0; j < 20; j++)
+	                {
+	                    session.Enqueue(Constants.StartTransactionSeparator); // ???
+	                    session.Flush();
+	                }
+	                session.Flush();
+	            }
+	        }
 
+	        using (var queue = new PersistentQueue(path))
+	        {
+	            using (var session = queue.OpenSession())
+	            {
+	                Assert.AreEqual(Constants.StartTransactionSeparator, session.Dequeue());
+	                session.Flush();
+	            }
+	        }
+	    }
         
 	    [Test]
 	    public void Can_handle_zero_length_entries_at_start()
