@@ -71,12 +71,13 @@ namespace DiskQueue
 		/// <summary>
 		/// Create or connect to a persistent store at the given storage path.
 		/// Uses specific maximum file size (files will be split if they exceed this size).
-		/// Throws UnauthorizedAccessException if you do not have read and write permissions.
-		/// Throws InvalidOperationException if another instance is attached to the backing store.
+		/// <para>Throws UnauthorizedAccessException if you do not have read and write permissions.</para>
+		/// <para>Throws InvalidOperationException if another instance is attached to the backing store.</para>
+        /// If `throwOnConflict` is set to false, data corruption will be silently ignored. Use this only where uptime is more important than data integrity.
 		/// </summary>
-		public PersistentQueue(string storagePath, int maxSize)
+		public PersistentQueue(string storagePath, int maxSize, bool throwOnConflict = true)
 		{
-			_queue = new PersistentQueueImpl(storagePath, maxSize);
+			_queue = new PersistentQueueImpl(storagePath, maxSize, throwOnConflict);
 		}
 
 		/// <summary>

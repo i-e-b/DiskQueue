@@ -41,7 +41,7 @@ namespace DiskQueue.Tests
 		}
 
 		[Test]
-		public void Count_of_items_will_remain_fixed_after_dequeqing_without_flushing()
+		public void Count_of_items_will_remain_fixed_after_dequeueing_without_flushing()
 		{
 			using (var queue = new PersistentQueue(path))
 			{
@@ -152,7 +152,7 @@ namespace DiskQueue.Tests
 		}
 
 		[Test]
-		public void Truncated_transaction_is_ignored()
+		public void Truncated_transaction_is_ignored_with_default_settings()
 		{
 			var txLogInfo = new FileInfo(Path.Combine(path, "transaction.log"));
 
@@ -465,6 +465,92 @@ namespace DiskQueue.Tests
 	                    Assert.IsNotNull(session.Dequeue());
 	                    session.Flush();
 	                }
+	            }
+	        }
+	    }
+
+	    [Test]
+	    public void Can_restore_data_when_a_transaction_set_is_partially_truncated()
+	    {
+	        var txLogInfo = new FileInfo(Path.Combine(path, "transaction.log"));
+	        using (var queue = new PersistentQueue(path)
+	        {
+	            // avoid auto tx log trimming
+	            TrimTransactionLogOnDispose = false
+	        })
+	        {
+	            using (var session = queue.OpenSession())
+	            {
+	                for (int j = 0; j < 5; j++)
+	                {
+	                    session.Enqueue(new byte[0]);
+	                }
+                    session.Flush();
+                }
+	        }
+            
+	        using (var txLog = txLogInfo.Open(FileMode.Open))
+	        {
+                var buf = new byte[(int)txLog.Length];
+	            txLog.Read(buf, 0, (int)txLog.Length);
+	            txLog.Write(buf, 0, buf.Length);        // a 'good' extra session
+	            txLog.Write(buf, 0, buf.Length / 2);    // a 'bad' extra session
+	            txLog.Flush();
+	        }
+
+	        using (var queue = new PersistentQueue(path))
+	        {
+	            using (var session = queue.OpenSession())
+	            {
+	                for (int j = 0; j < 10; j++)
+	                {
+	                    Assert.IsEmpty(session.Dequeue());
+	                }
+	                Assert.IsNull(session.Dequeue());
+	                session.Flush();
+	            }
+	        }
+	    }
+
+        [Test]
+	    public void Can_restore_data_when_a_transaction_set_is_partially_overwritten_when_throwOnConflict_is_false()
+	    {
+	        var txLogInfo = new FileInfo(Path.Combine(path, "transaction.log"));
+	        using (var queue = new PersistentQueue(path)
+	        {
+	            // avoid auto tx log trimming
+	            TrimTransactionLogOnDispose = false
+	        })
+	        {
+	            using (var session = queue.OpenSession())
+	            {
+	                for (int j = 0; j < 5; j++)
+	                {
+	                    session.Enqueue(new byte[0]);
+	                }
+	                session.Flush();
+	            }
+	        }
+            
+	        using (var txLog = txLogInfo.Open(FileMode.Open))
+	        {
+	            var buf = new byte[(int)txLog.Length];
+	            txLog.Read(buf, 0, (int)txLog.Length);
+	            txLog.Write(buf, 0, buf.Length - 16); // new session, but with missing end marker
+	            txLog.Write(Constants.StartTransactionSeparator, 0, 16);
+	            txLog.Flush();
+	        }
+
+	        using (var queue = new PersistentQueue(path, Constants._32Megabytes, throwOnConflict: false))
+	        {
+	            using (var session = queue.OpenSession())
+	            {
+	                for (int j = 0; j < 5; j++) // first 5 should be OK
+	                {
+	                    Assert.IsNotNull(session.Dequeue());
+	                }
+	                Assert.IsNull(session.Dequeue()); // duplicated 5 should be silently lost.
+	                session.Flush();
 	            }
 	        }
 	    }

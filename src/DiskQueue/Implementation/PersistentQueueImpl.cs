@@ -34,7 +34,7 @@ namespace DiskQueue.Implementation
 {
 	internal class PersistentQueueImpl : IPersistentQueueImpl
 	{
-		private readonly HashSet<Entry> checkedOutEntries = new HashSet<Entry>();
+	    private readonly HashSet<Entry> checkedOutEntries = new HashSet<Entry>();
 
 		private readonly Dictionary<int, int> countOfItemsPerFile = new Dictionary<int, int>();
 
@@ -44,10 +44,10 @@ namespace DiskQueue.Implementation
 
 		private readonly object transactionLogLock = new object();
 		private readonly object writerLock = new object();
+	    private readonly bool _throwOnConflict;
 	    private static readonly object _configLock = new object();
 	    private volatile bool disposed;
 		private FileStream fileLock;
-		private const int _32Megabytes = 32*1024*1024;
 
 		public bool TrimTransactionLogOnDispose { get; set; }
 		public int SuggestedReadBuffer { get; set; }
@@ -56,18 +56,19 @@ namespace DiskQueue.Implementation
 
 	    public readonly int MaxFileSize;
 
-		public PersistentQueueImpl(string path, int maxFileSize)
+		public PersistentQueueImpl(string path, int maxFileSize, bool throwOnConflict)
 		{
-			lock(_configLock)
+		    lock(_configLock)
 			{
 				disposed = true;
 				TrimTransactionLogOnDispose = true;
 				ParanoidFlushing = true;
-				SuggestedMaxTransactionLogSize = _32Megabytes;
+				SuggestedMaxTransactionLogSize = Constants._32Megabytes;
 				SuggestedReadBuffer = 1024*1024;
 				SuggestedWriteBuffer = 1024*1024;
+                _throwOnConflict = throwOnConflict;
 
-				MaxFileSize = maxFileSize;
+                MaxFileSize = maxFileSize;
 				try
 				{
 					this.path = Path.GetFullPath(path);
@@ -129,7 +130,7 @@ namespace DiskQueue.Implementation
 			SetPermissions.TryAllowReadWriteForAll(s);
 		}
 
-		public PersistentQueueImpl(string path) : this(path, _32Megabytes) { }
+		public PersistentQueueImpl(string path) : this(path, Constants._32Megabytes, true) { }
 
 		public int EstimatedCountOfItemsInQueue
 		{
@@ -390,12 +391,7 @@ namespace DiskQueue.Implementation
 						int txCount = 0;
 						while (true)
 						{
-                            // TODO: need to ensure that a truncated log is recoverable in some way.
-                            //       It would be OK to require a specific flag as acceptance that
-                            //       silent data loss is possible.
-
-
-							txCount += 1;
+                            txCount += 1;
 							// this code ensures that we read the full transaction
 							// before we start to apply it. The last truncated transaction will be
 							// ignored automatically.
@@ -509,15 +505,15 @@ namespace DiskQueue.Implementation
 			ms.Write(length, 0, length.Length);
 		}
 
-		private static void AssertOperationSeparator(BinaryReader reader)
+		private void AssertOperationSeparator(BinaryReader reader)
 		{
 			var separator = reader.ReadInt32();
-			if (separator != Constants.OperationSeparator)
-				throw new InvalidOperationException(
-					"Unexpected data in transaction log. Expected to get transaction separator but got unknonwn data");
-		}
+		    if (separator == Constants.OperationSeparator) return; // OK
 
-		public int[] ApplyTransactionOperationsInMemory(IEnumerable<Operation> operations)
+            ThrowIfStrict("Unexpected data in transaction log. Expected to get transaction separator but got unknown data");
+        }
+
+        public int[] ApplyTransactionOperationsInMemory(IEnumerable<Operation> operations)
 		{
 			foreach (var operation in operations)
 			{
@@ -564,7 +560,21 @@ namespace DiskQueue.Implementation
 			return filesToRemove.ToArray();
 		}
 
-		private static void AssertTransactionSeperator(BinaryReader binaryReader, int txCount, Marker whichSeparator, Action hasData)
+        /// <summary>
+        /// If 'throwOnConflict' was set in the constructor, throw an InvalidOperationException. This will stop program flow.
+        /// If not, throw an EndOfStreamException, which should result in silent data truncation.
+        /// </summary>
+	    private void ThrowIfStrict(string msg)
+	    {
+	        if (_throwOnConflict)
+	        {
+	            throw new InvalidOperationException(msg);
+	        }
+
+	        throw new EndOfStreamException();   // silently truncate transactions
+	    }
+
+	    private void AssertTransactionSeperator(BinaryReader binaryReader, int txCount, Marker whichSeparator, Action hasData)
 		{
 			var bytes = binaryReader.ReadBytes(16);
 			if (bytes.Length == 0) throw new EndOfStreamException();
@@ -578,7 +588,7 @@ namespace DiskQueue.Implementation
 				{
 					throw new EndOfStreamException();
 				}
-				throw new InvalidOperationException("Unexpected data in transaction log. Expected to get transaction separator but got truncated data. Tx #" + txCount);
+			    ThrowIfStrict("Unexpected data in transaction log. Expected to get transaction separator but got truncated data. Tx #" + txCount);
 			}
 
 		    Guid expectedValue, otherValue;
@@ -602,9 +612,9 @@ namespace DiskQueue.Implementation
 		    {
 		        if (separator == otherValue) // found a marker, but of the wrong type
 		        {
-                    throw new InvalidOperationException("Unexpected data in transaction log. Expected " + whichSeparator + " but found " + otherSeparator);
+		            ThrowIfStrict("Unexpected data in transaction log. Expected " + whichSeparator + " but found " + otherSeparator);
                 }
-                throw new InvalidOperationException("Unexpected data in transaction log. Expected to get transaction separator but got unknown data. Tx #" + txCount);
+		        ThrowIfStrict("Unexpected data in transaction log. Expected to get transaction separator but got unknown data. Tx #" + txCount);
 		    }
 		}
 

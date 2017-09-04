@@ -23,6 +23,9 @@ Basic Usage
 Example
 -------
 Queue on one thread, consume on another; retry some exceptions.
+
+**Note** this is one queue being shared between two sessions. You should not open two queue instances for one storage location at once.
+
 ```csharp
 IPersistentQueue queue = new PersistentQueue("queue_a");
 var t1 = new Thread(() =>
@@ -90,6 +93,19 @@ Each session is a transaction. Any Enqueues or Dequeues will be rolled back when
 you call `session.Flush()`. Data will only be visible between threads once it has been flushed.
 Each flush incurs a performance penalty. By default, each flush is persisted to disk before continuing. You 
 can get more speed at a safety cost by setting `queue.ParanoidFlushing = false;`
+
+Data loss and transaction truncation
+------------------------------------
+By default, DiskQueue will silently discard transaction blocks that have been truncated; it will throw an `InvalidOperationException`
+when transaction block markers are overwritten (this happens if more than one process is using the queue by mistake. It can also happen with some kinds of disk corruption).
+If you construct your queue with `throwOnConflict: false`, all recoverable transaction errors will be silently truncated. This should only be used when
+uptime is more important than data consistency.
+
+```
+using (var queue = new PersistentQueue(path, Constants._32Megabytes, throwOnConflict: false)) {
+    . . .
+}
+```
 
 Multi-Process Usage
 -------------------

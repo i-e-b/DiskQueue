@@ -27,6 +27,9 @@ namespace DiskQueue.Implementation
 		/// <summary> Bytes of end of transaction marker </summary>
 		public static readonly byte[] EndTransactionSeparator = EndTransactionSeparatorGuid.ToByteArray();
 
+        
+        /// <summary> 32MiB in bytes </summary>
+	    public const int _32Megabytes = 32*1024*1024;
 	}
 
     /// <summary>
