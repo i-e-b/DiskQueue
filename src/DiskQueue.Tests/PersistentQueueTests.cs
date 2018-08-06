@@ -15,6 +15,7 @@ namespace DiskQueue.Tests
 		{
 			using (new PersistentQueue(path))
 			{
+			    // ReSharper disable once ObjectCreationAsStatement
 				new PersistentQueue(path);
 			}
 		}
@@ -34,15 +35,15 @@ namespace DiskQueue.Tests
 
 		[Test]
 		public void Can_create_new_queue()
-		{
-			new PersistentQueue(path).Dispose();
-		}
+        {
+            new PersistentQueue(path).Dispose();
+        }
 
-		[Test]
-		[ExpectedException(typeof(InvalidOperationException), ExpectedMessage ="Unexpected data in transaction log. Expected to get transaction separator but got unknown data. Tx #1")]
-		public void Corrupt_index_file_should_throw()
-		{
-			var buffer = new List<byte>();
+        [Test]
+        [ExpectedException(typeof(InvalidOperationException), ExpectedMessage = "Unexpected data in transaction log. Expected to get transaction separator but got unknown data. Tx #1")]
+        public void Corrupt_index_file_should_throw()
+        {
+            var buffer = new List<byte>();
 			buffer.AddRange(Guid.NewGuid().ToByteArray());
 			buffer.AddRange(Guid.NewGuid().ToByteArray());
 			buffer.AddRange(Guid.NewGuid().ToByteArray());
@@ -50,6 +51,7 @@ namespace DiskQueue.Tests
 			Directory.CreateDirectory(path);
 			File.WriteAllBytes(Path.Combine(path, "transaction.log"), buffer.ToArray());
 
+		    // ReSharper disable once ObjectCreationAsStatement
 			new PersistentQueue(path);
 		}
 
@@ -149,7 +151,7 @@ namespace DiskQueue.Tests
 		}
 
 		[Test]
-		public void Not_flushing_the_session_will_revert_dequequed_items()
+		public void Not_flushing_the_session_will_revert_dequeued_items()
 		{
 			using (var queue = new PersistentQueue(path))
 			using (var session = queue.OpenSession())
@@ -174,7 +176,7 @@ namespace DiskQueue.Tests
 		}
 
 		[Test]
-		public void Not_flushing_the_session_will_revert_dequequed_items_two_sessions_same_queue()
+		public void Not_flushing_the_session_will_revert_dequeued_items_two_sessions_same_queue()
 		{
 			using (var queue = new PersistentQueue(path))
 			using (var session = queue.OpenSession())
@@ -214,5 +216,31 @@ namespace DiskQueue.Tests
 				Assert.IsNull(session2.Dequeue());
 			}
 		}
+
+        [Test]
+        public void Items_are_reverted_in_their_original_order ()
+        {
+            using (var queue = new PersistentQueue(path))
+            using (var session = queue.OpenSession())
+            {
+                session.Enqueue(new byte[] { 1 });
+                session.Enqueue(new byte[] { 2 });
+                session.Enqueue(new byte[] { 3 });
+                session.Enqueue(new byte[] { 4 });
+                session.Flush();
+            }
+
+            for (int i = 0; i < 4; i++)
+            {
+                using (var queue = new PersistentQueue(path))
+                using (var session = queue.OpenSession())
+                {
+                    CollectionAssert.AreEqual(new byte[] { 1 }, session.Dequeue(), "Incorrect order on turn " + (i + 1));
+                    CollectionAssert.AreEqual(new byte[] { 2 }, session.Dequeue(), "Incorrect order on turn " + (i + 1));
+                    CollectionAssert.AreEqual(new byte[] { 3 }, session.Dequeue(), "Incorrect order on turn " + (i + 1));
+                    // Dispose without `session.Flush();`
+                }
+            }
+        }
 	}
 }

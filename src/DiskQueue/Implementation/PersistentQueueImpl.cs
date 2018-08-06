@@ -366,7 +366,7 @@ namespace DiskQueue.Implementation
 			lock (entries)
 			{
 				ApplyTransactionOperations(
-					from entry in reinstatedOperations
+					from entry in reinstatedOperations.Reverse()
 					where entry.Type == OperationType.Dequeue
 					select new Operation(
 						OperationType.Reinstate,
