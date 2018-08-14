@@ -2,6 +2,16 @@
 
   <PropertyGroup>
     <TargetFramework>netstandard2.0</TargetFramework>
+    <Authors>shamork</Authors>
+    <Company />
+    <Description>A thread-safe, multi-process(ish) persistent queue, based very heavily on http://ayende.com/blog/3479/rhino-queues-storage-disk .
+forked from https://github.com/i-e-b/DiskQueue</Description>
+    <PackageProjectUrl>https://github.com/shamork/DiskQueue</PackageProjectUrl>
+    <PackageIconUrl>https://raw.githubusercontent.com/shamork/DiskQueue/master/Logo.png</PackageIconUrl>
+    <RepositoryUrl></RepositoryUrl>
+    <GeneratePackageOnBuild>false</GeneratePackageOnBuild>
+    <PackageTags>DiskQueue NetStandard DiskQueue.NetStandard dot net core</PackageTags>
+    <Version>1.0.1</Version>
   </PropertyGroup>
 
   <ItemGroup>
