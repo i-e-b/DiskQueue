@@ -4,7 +4,7 @@ using System.Collections.Generic;
 
 namespace DiskQueue.Tests
 {
-	[TestFixture, Explicit]
+	[TestFixture]
 	public class PerformanceTests : PersistentQueueTestsBase
 	{
 		[Test, Description(

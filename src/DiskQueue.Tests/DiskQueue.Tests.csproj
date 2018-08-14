@@ -102,9 +102,9 @@
     </PackageReference>
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\..\DiskQueue.NetStandard\DiskQueue.NetStandard.csproj">
-      <Project>{2dc94691-6dd0-40a7-a00f-5fc3d23ca0bf}</Project>
-      <Name>DiskQueue.NetStandard</Name>
+    <ProjectReference Include="..\DiskQueue\DiskQueue.csproj">
+      <Project>{d3f1301e-3c40-4fe5-9ff3-5d95d3a4f7e5}</Project>
+      <Name>DiskQueue</Name>
     </ProjectReference>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />

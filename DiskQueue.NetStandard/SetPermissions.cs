@@ -51,33 +51,47 @@ namespace DiskQueue
 		}
 
 		static void Ignore() { }
-
-		static void File_RWX_all(string path)
-		{
-			if (RunningUnderPosix)
-			{
-				UnsafeNativeMethods.chmod(path, UnixFilePermissions.ACCESSPERMS);
-			}
-			else
-			{
-                var fs= new FileSecurity(path, AccessControlSections.Access);
-				var everyone = new SecurityIdentifier(WellKnownSidType.WorldSid, null);
+        static void File_RWX_all(string path)
+        {
+            if (RunningUnderPosix)
+            {
+                UnsafeNativeMethods.chmod(path, UnixFilePermissions.ACCESSPERMS);
+            }
+            else
+            {
+#if NETSTANDARD
+                var fs = new FileSecurity(path, AccessControlSections.Access);
+                var everyone = new SecurityIdentifier(WellKnownSidType.WorldSid, null);
                 fs.AddAccessRule(new FileSystemAccessRule(everyone, FileSystemRights.Modify | FileSystemRights.Synchronize, InheritanceFlags.None, PropagationFlags.None, AccessControlType.Allow));
-			}
-		}
+#else
+                var sec = File.GetAccessControl(path);
+				var everyone = new SecurityIdentifier(WellKnownSidType.WorldSid, null);
+				sec.AddAccessRule(new FileSystemAccessRule(everyone, FileSystemRights.Modify | FileSystemRights.Synchronize, InheritanceFlags.None, PropagationFlags.None, AccessControlType.Allow));
+				File.SetAccessControl(path, sec);
+#endif
+            }
+        }
 
-		static void Directory_RWX_all(string path)
-		{
-			if (RunningUnderPosix)
-			{
-				UnsafeNativeMethods.chmod(path, UnixFilePermissions.ACCESSPERMS);
-			}
-			else
-			{
+        static void Directory_RWX_all(string path)
+        {
+            if (RunningUnderPosix)
+            {
+                UnsafeNativeMethods.chmod(path, UnixFilePermissions.ACCESSPERMS);
+            }
+            else
+            {
+#if NETSTANDARD
                 var fs = new DirectorySecurity(path, AccessControlSections.Access);
                 var everyone = new SecurityIdentifier(WellKnownSidType.WorldSid, null);
                 fs.AddAccessRule(new FileSystemAccessRule(everyone, FileSystemRights.Modify | FileSystemRights.Synchronize, InheritanceFlags.ContainerInherit | InheritanceFlags.ObjectInherit, PropagationFlags.None, AccessControlType.Allow));
-			}
-		}
+#else
+
+				var sec = Directory.GetAccessControl(path);
+				var everyone = new SecurityIdentifier(WellKnownSidType.WorldSid, null);
+				sec.AddAccessRule(new FileSystemAccessRule(everyone, FileSystemRights.Modify | FileSystemRights.Synchronize, InheritanceFlags.ContainerInherit | InheritanceFlags.ObjectInherit, PropagationFlags.None, AccessControlType.Allow));
+				Directory.SetAccessControl(path, sec);
+#endif
+            }
+        }
 	}
 }
