@@ -9,16 +9,21 @@ namespace DiskQueue.Tests
 	public class PersistentQueueTests : PersistentQueueTestsBase
 	{
 		[Test]
-		[ExpectedException(typeof(InvalidOperationException),
-			ExpectedMessage = "Another instance of the queue is already in action, or directory does not exists")]
+		//[ExpectedException(typeof(InvalidOperationException),
+		//	ExpectedMessage = "Another instance of the queue is already in action, or directory does not exists")]
 		public void Only_single_instance_of_queue_can_exists_at_any_one_time()
-		{
-			using (new PersistentQueue(path))
-			{
-			    // ReSharper disable once ObjectCreationAsStatement
-				new PersistentQueue(path);
-			}
-		}
+        {
+            var invalidOperationException = Assert.Throws<InvalidOperationException>(() =>
+            {
+                using (new PersistentQueue(path))
+                {
+                    // ReSharper disable once ObjectCreationAsStatement
+                    new PersistentQueue(path);
+                }
+            });
+
+            Assert.That(invalidOperationException.Message, Is.EqualTo("Another instance of the queue is already in action, or directory does not exists"));
+        }
 
 		[Test]
 		public void If_a_non_running_process_has_a_lock_then_can_start_an_instance ()
@@ -40,7 +45,7 @@ namespace DiskQueue.Tests
         }
 
         [Test]
-        [ExpectedException(typeof(InvalidOperationException), ExpectedMessage = "Unexpected data in transaction log. Expected to get transaction separator but got unknown data. Tx #1")]
+        //[ExpectedException(typeof(InvalidOperationException), ExpectedMessage = "Unexpected data in transaction log. Expected to get transaction separator but got unknown data. Tx #1")]
         public void Corrupt_index_file_should_throw()
         {
             var buffer = new List<byte>();
@@ -51,9 +56,14 @@ namespace DiskQueue.Tests
 			Directory.CreateDirectory(path);
 			File.WriteAllBytes(Path.Combine(path, "transaction.log"), buffer.ToArray());
 
-		    // ReSharper disable once ObjectCreationAsStatement
-			new PersistentQueue(path);
-		}
+            var invalidOperationException = Assert.Throws<InvalidOperationException>(() =>
+            {
+                // ReSharper disable once ObjectCreationAsStatement
+                new PersistentQueue(path);
+            });
+
+            Assert.That(invalidOperationException.Message, Is.EqualTo("Unexpected data in transaction log. Expected to get transaction separator but got unknown data. Tx #1"));
+        }
 
 		[Test]
 		public void Dequeing_from_empty_queue_will_return_null()
