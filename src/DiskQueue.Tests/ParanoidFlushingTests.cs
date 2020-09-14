@@ -1,4 +1,5 @@
 ﻿using NUnit.Framework;
+// ReSharper disable PossibleNullReferenceException
 
 namespace DiskQueue.Tests
 {

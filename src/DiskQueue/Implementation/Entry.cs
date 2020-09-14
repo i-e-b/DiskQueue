@@ -32,11 +32,11 @@ namespace DiskQueue.Implementation
 		public byte[] Data { get; set; }
 		
 		/// <summary> File number </summary>
-		public int FileNumber { get; set; }
+		public int FileNumber { get; }
 		/// <summary> offset of start of entry in file </summary>
-		public int Start { get; set; }
+		public int Start { get; }
 		/// <summary> length of entry on disk </summary>
-		public int Length { get; set; }
+		public int Length { get; }
 
 		/// <summary>
 		/// Compare this entry to other for exact equality

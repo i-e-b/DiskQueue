@@ -1,12 +1,14 @@
 using System;
 using NUnit.Framework;
 using System.IO;
+// ReSharper disable PossibleNullReferenceException
+// ReSharper disable AssignNullToNotNullAttribute
 
 namespace DiskQueue.Tests
 {
 	public class PersistentQueueTestsBase
 	{
-		protected const string path = @"./queue";
+		protected const string Path = @"./queue";
 		static readonly object _lock = new Object();
 
 		[SetUp]
@@ -30,19 +32,18 @@ namespace DiskQueue.Tests
 			{
 				try
 				{
-					if (Directory.Exists(path))
+					if (Directory.Exists(Path))
 					{
-						var files = Directory.GetFiles(path, "*", SearchOption.AllDirectories);
-						Array.Sort(files, (s1, s2) => s2.Length.CompareTo(s1.Length)); // sortby length descending
+						var files = Directory.GetFiles(Path, "*", SearchOption.AllDirectories);
+						Array.Sort(files, (s1, s2) => s2.Length.CompareTo(s1.Length)); // sort by length descending
 						foreach (var file in files)
 						{
 							File.Delete(file);
 						}
 
-						Directory.Delete(path, true);
+						Directory.Delete(Path, true);
 
 					}
-					//Directory.CreateDirectory(path);
 				}
 				catch (UnauthorizedAccessException)
 				{

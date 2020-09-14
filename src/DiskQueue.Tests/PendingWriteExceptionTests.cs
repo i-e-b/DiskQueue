@@ -2,6 +2,8 @@ using DiskQueue.Implementation;
 using NUnit.Framework;
 using System;
 using System.Linq;
+// ReSharper disable PossibleNullReferenceException
+// ReSharper disable AssignNullToNotNullAttribute
 
 namespace DiskQueue.Tests
 {

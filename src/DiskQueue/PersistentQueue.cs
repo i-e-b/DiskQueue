@@ -42,7 +42,7 @@ namespace DiskQueue
 					}
 					catch (PlatformNotSupportedException ex)
 					{
-						Console.WriteLine("Blocked by " + ex.GetType().Name + "; " + ex.Message + "\r\n\r\n" + ex.StackTrace);
+						Console.WriteLine("Blocked by " + ex.GetType()?.Name + "; " + ex.Message + "\r\n\r\n" + ex.StackTrace);
 						throw;
 					}
 					catch

@@ -1,6 +1,8 @@
 using NUnit.Framework;
 using System;
 using System.Collections.Generic;
+// ReSharper disable PossibleNullReferenceException
+// ReSharper disable AssignNullToNotNullAttribute
 
 namespace DiskQueue.Tests
 {
@@ -12,7 +14,7 @@ namespace DiskQueue.Tests
 			"than with a single flush (depends on disk speed)")]
 		public void Enqueue_million_items_with_100_flushes()
 		{
-			using (var queue = new PersistentQueue(path))
+			using (var queue = new PersistentQueue(Path))
 			{
 				for (int i = 0; i < 100; i++)
 				{
@@ -31,7 +33,7 @@ namespace DiskQueue.Tests
 		[Test]
 		public void Enqueue_million_items_with_single_flush()
 		{
-			using (var queue = new PersistentQueue(path))
+			using (var queue = new PersistentQueue(Path))
 			{
 				using (var session = queue.OpenSession())
 				{
@@ -47,7 +49,7 @@ namespace DiskQueue.Tests
 		[Test]
 		public void Enqueue_and_dequeue_million_items_same_queue()
 		{
-			using (var queue = new PersistentQueue(path))
+			using (var queue = new PersistentQueue(Path))
 			{
 				using (var session = queue.OpenSession())
 				{
@@ -74,7 +76,7 @@ namespace DiskQueue.Tests
 		[Test]
 		public void Enqueue_and_dequeue_million_items_restart_queue()
 		{
-			using (var queue = new PersistentQueue(path))
+			using (var queue = new PersistentQueue(Path))
 			{
 				using (var session = queue.OpenSession())
 				{
@@ -86,7 +88,7 @@ namespace DiskQueue.Tests
 				}
 			}
 
-			using (var queue = new PersistentQueue(path))
+			using (var queue = new PersistentQueue(Path))
 			{
 				using (var session = queue.OpenSession())
 				{
@@ -104,7 +106,7 @@ namespace DiskQueue.Tests
 		{
 			var random = new Random();
 			var itemsSizes = new List<int>();
-			using (var queue = new PersistentQueue(path))
+			using (var queue = new PersistentQueue(Path))
 			{
 				using (var session = queue.OpenSession())
 				{
@@ -118,7 +120,7 @@ namespace DiskQueue.Tests
 				}
 			}
 
-			using (var queue = new PersistentQueue(path))
+			using (var queue = new PersistentQueue(Path))
 			{
 				using (var session = queue.OpenSession())
 				{

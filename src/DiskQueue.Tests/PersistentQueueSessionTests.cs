@@ -4,6 +4,7 @@ using NSubstitute.Core;
 using NUnit.Framework;
 using System;
 using System.IO;
+// ReSharper disable PossibleNullReferenceException
 
 namespace DiskQueue.Tests
 {
@@ -11,8 +12,6 @@ namespace DiskQueue.Tests
     public class PersistentQueueSessionTests : PersistentQueueTestsBase
     {
         [Test]
-        //	[ExpectedException(typeof(PendingWriteException),ExpectedMessage = @"Error during pending writes:
-        //- Memory stream is not expandable.")]
         public void Errors_raised_during_pending_write_will_be_thrown_on_flush()
         {
             var limitedSizeStream = new MemoryStream(new byte[4]);
@@ -27,12 +26,10 @@ namespace DiskQueue.Tests
                 }
             });
 
-            Assert.That(pendingWriteException.Message, Is.EqualTo(@"Error during pending writes:
- - Memory stream is not expandable."));
+            Assert.That(pendingWriteException.Message, Is.EqualTo("Error during pending writes:\r\n - Memory stream is not expandable."));
         }
 
         [Test]
-        //[ExpectedException(typeof(NotSupportedException),ExpectedMessage = @"Memory stream is not expandable.")]
         public void Errors_raised_during_flush_write_will_be_thrown_as_is()
         {
             var limitedSizeStream = new MemoryStream(new byte[4]);
@@ -51,23 +48,22 @@ namespace DiskQueue.Tests
         }
 
         [Test]
-        //[ExpectedException(typeof(InvalidOperationException),ExpectedMessage =  "End of file reached while trying to read queue item")]
         public void If_data_stream_is_truncated_will_raise_error()
         {
-            using (var queue = new PersistentQueue(path))
+            using (var queue = new PersistentQueue(Path))
             using (var session = queue.OpenSession())
             {
                 session.Enqueue(new byte[] { 1, 2, 3, 4 });
                 session.Flush();
             }
-            using (var fs = new FileStream(Path.Combine(path, "data.0"), FileMode.Open))
+            using (var fs = new FileStream(System.IO.Path.Combine(Path, "data.0"), FileMode.Open))
             {
                 fs.SetLength(2);//corrupt the file
             }
 
             var invalidOperationException = Assert.Throws<InvalidOperationException>(() =>
             {
-                using (var queue = new PersistentQueue(path))
+                using (var queue = new PersistentQueue(Path))
                 {
                     using (var session = queue.OpenSession())
                     {

@@ -1,4 +1,5 @@
 using NUnit.Framework;
+// ReSharper disable PossibleNullReferenceException
 
 namespace DiskQueue.Tests
 {
@@ -8,7 +9,7 @@ namespace DiskQueue.Tests
 		[Test]
 		public void Can_get_count_from_queue()
 		{
-			using (var queue = new PersistentQueue(path))
+			using (var queue = new PersistentQueue(Path))
 			{
 				Assert.AreEqual(0, queue.EstimatedCountOfItemsInQueue);
 			}
@@ -17,7 +18,7 @@ namespace DiskQueue.Tests
 		[Test]
 		public void Can_enter_items_and_get_count_of_items()
 		{
-			using (var queue = new PersistentQueue(path))
+			using (var queue = new PersistentQueue(Path))
 			{
 				for (byte i = 0; i < 5; i++)
 				{
@@ -35,7 +36,7 @@ namespace DiskQueue.Tests
 		[Test]
 		public void Can_get_count_of_items_after_queue_restart()
 		{
-			using (var queue = new PersistentQueue(path))
+			using (var queue = new PersistentQueue(Path))
 			{
 				for (byte i = 0; i < 5; i++)
 				{
@@ -47,7 +48,7 @@ namespace DiskQueue.Tests
 				}
 			}
 
-			using (var queue = new PersistentQueue(path))
+			using (var queue = new PersistentQueue(Path))
 			{
 				Assert.AreEqual(5, queue.EstimatedCountOfItemsInQueue);
 			}

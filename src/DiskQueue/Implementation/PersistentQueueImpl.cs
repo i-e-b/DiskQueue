@@ -44,7 +44,7 @@ namespace DiskQueue.Implementation
 
 		private readonly object transactionLogLock = new object();
 		private readonly object writerLock = new object();
-	    private readonly bool _throwOnConflict;
+	    private readonly bool throwOnConflict;
 	    private static readonly object _configLock = new object();
 	    private volatile bool disposed;
 		private FileStream fileLock;
@@ -66,7 +66,7 @@ namespace DiskQueue.Implementation
 				SuggestedMaxTransactionLogSize = Constants._32Megabytes;
 				SuggestedReadBuffer = 1024*1024;
 				SuggestedWriteBuffer = 1024*1024;
-                _throwOnConflict = throwOnConflict;
+                this.throwOnConflict = throwOnConflict;
 
                 MaxFileSize = maxFileSize;
 				try
@@ -134,7 +134,14 @@ namespace DiskQueue.Implementation
 
 		public int EstimatedCountOfItemsInQueue
 		{
-			get { return entries.Count + checkedOutEntries.Count; }
+			get
+			{
+				if (entries == null) return 0;
+				lock (entries)
+				{
+					return entries.Count + checkedOutEntries.Count;
+				}
+			}
 		}
 
 		/// <summary>
@@ -515,34 +522,30 @@ namespace DiskQueue.Implementation
 
         public int[] ApplyTransactionOperationsInMemory(IEnumerable<Operation> operations)
 		{
+			if (operations == null) return Array.Empty<int>();
+			
 			foreach (var operation in operations)
 			{
-				switch (operation.Type)
+				switch (operation?.Type)
 				{
 					case OperationType.Enqueue:
 						var entryToAdd = new Entry(operation);
-						entries.AddLast(entryToAdd);
+						lock (entries) { entries.AddLast(entryToAdd); }
 						var itemCountAddition = countOfItemsPerFile.GetValueOrDefault(entryToAdd.FileNumber);
 						countOfItemsPerFile[entryToAdd.FileNumber] = itemCountAddition + 1;
 						break;
 
 					case OperationType.Dequeue:
 						var entryToRemove = new Entry(operation);
-						lock (checkedOutEntries)
-						{
-						    checkedOutEntries.Remove(entryToRemove);
-						}
+						lock (checkedOutEntries) { checkedOutEntries.Remove(entryToRemove); }
 						var itemCountRemoval = countOfItemsPerFile.GetValueOrDefault(entryToRemove.FileNumber);
 						countOfItemsPerFile[entryToRemove.FileNumber] = itemCountRemoval - 1;
 						break;
 
 					case OperationType.Reinstate:
-						var entryToReistate = new Entry(operation);
-						entries.AddFirst(entryToReistate);
-						lock (checkedOutEntries)
-						{
-						    checkedOutEntries.Remove(entryToReistate);
-						}
+						var entryToReinstate = new Entry(operation);
+						lock (entries ) { entries.AddFirst(entryToReinstate); }
+						lock (checkedOutEntries) { checkedOutEntries.Remove(entryToReinstate); }
 						break;
 				}
 			}
@@ -566,7 +569,7 @@ namespace DiskQueue.Implementation
         /// </summary>
 	    private void ThrowIfStrict(string msg)
 	    {
-	        if (_throwOnConflict)
+	        if (throwOnConflict)
 	        {
 	            throw new InvalidOperationException(msg);
 	        }
