@@ -32,7 +32,7 @@ namespace DiskQueue
 		/// <para>UNSAFE. Incorrect use will result in data loss.</para>
 		/// Dequeue data, returning storage entry
 		/// </summary>
-		Entry Dequeue();
+		Entry? Dequeue();
 
 		/// <summary>
 		/// <para>UNSAFE. Incorrect use will result in data loss.</para>

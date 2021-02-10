@@ -34,20 +34,20 @@ namespace DiskQueue.Implementation
 {
 	internal class PersistentQueueImpl : IPersistentQueueImpl
 	{
-	    private readonly HashSet<Entry> checkedOutEntries = new HashSet<Entry>();
+	    private readonly HashSet<Entry> _checkedOutEntries = new();
 
-		private readonly Dictionary<int, int> countOfItemsPerFile = new Dictionary<int, int>();
+		private readonly Dictionary<int, int> _countOfItemsPerFile = new();
 
-		private readonly LinkedList<Entry> entries = new LinkedList<Entry>();
+		private readonly LinkedList<Entry> _entries = new();
 
-		private readonly string path;
+		private readonly string _path;
 
-		private readonly object transactionLogLock = new object();
-		private readonly object writerLock = new object();
-	    private readonly bool throwOnConflict;
-	    private static readonly object _configLock = new object();
-	    private volatile bool disposed;
-		private FileStream fileLock;
+		private readonly object _transactionLogLock = new();
+		private readonly object _writerLock = new();
+	    private readonly bool _throwOnConflict;
+	    private static readonly object _configLock = new();
+	    private volatile bool _disposed;
+		private FileStream? _fileLock;
 
 		public bool TrimTransactionLogOnDispose { get; set; }
 		public int SuggestedReadBuffer { get; set; }
@@ -60,20 +60,20 @@ namespace DiskQueue.Implementation
 		{
 		    lock(_configLock)
 			{
-				disposed = true;
+				_disposed = true;
 				TrimTransactionLogOnDispose = true;
 				ParanoidFlushing = true;
 				SuggestedMaxTransactionLogSize = Constants._32Megabytes;
 				SuggestedReadBuffer = 1024*1024;
 				SuggestedWriteBuffer = 1024*1024;
-                this.throwOnConflict = throwOnConflict;
+                this._throwOnConflict = throwOnConflict;
 
                 MaxFileSize = maxFileSize;
 				try
 				{
-					this.path = Path.GetFullPath(path);
-					if (!Directory.Exists(this.path))
-						CreateDirectory(this.path);
+					this._path = Path.GetFullPath(path);
+					if (!Directory.Exists(this._path))
+						CreateDirectory(this._path);
 
 					LockQueue();
 				}
@@ -98,26 +98,26 @@ namespace DiskQueue.Implementation
 					UnlockQueue();
 					throw;
 				}
-				disposed = false;
+				_disposed = false;
 			}
 		}
 
 		void UnlockQueue()
 		{
-			if (path == null) return;
-			var target = Path.Combine(path, "lock");
-			if (fileLock != null)
+			if (string.IsNullOrWhiteSpace(_path)) return;
+			var target = Path.Combine(_path, "lock");
+			if (_fileLock != null)
 			{
-				fileLock.Dispose();
+				_fileLock.Dispose();
 				File.Delete(target);
 			}
-			fileLock = null;
+			_fileLock = null;
 		}
 
 		void LockQueue()
 		{
-			var target = Path.Combine(path, "lock");
-			fileLock = new FileStream(
+			var target = Path.Combine(_path, "lock");
+			_fileLock = new FileStream(
 				target,
 				FileMode.Create,
 				FileAccess.ReadWrite,
@@ -130,16 +130,16 @@ namespace DiskQueue.Implementation
 			SetPermissions.TryAllowReadWriteForAll(s);
 		}
 
+		// ReSharper disable once IntroduceOptionalParameters.Global
 		public PersistentQueueImpl(string path) : this(path, Constants._32Megabytes, true) { }
 
 		public int EstimatedCountOfItemsInQueue
 		{
 			get
 			{
-				if (entries == null) return 0;
-				lock (entries)
+				lock (_entries)
 				{
-					return entries.Count + checkedOutEntries.Count;
+					return _entries.Count + _checkedOutEntries.Count;
 				}
 			}
 		}
@@ -157,30 +157,24 @@ namespace DiskQueue.Implementation
 		{
 			get
 			{
-				lock (entries)
+				lock (_entries)
 				{
-					return entries.Count + checkedOutEntries.Count;
+					return _entries.Count + _checkedOutEntries.Count;
 				}
 			}
 		}
 
 		public long CurrentFilePosition { get; private set; }
 
-		private string TransactionLog
-		{
-			get { return Path.Combine(path, "transaction.log"); }
-		}
+		private string TransactionLog => Path.Combine(_path, "transaction.log");
 
-		private string Meta
-		{
-			get { return Path.Combine(path, "meta.state"); }
-		}
+		private string Meta => Path.Combine(_path, "meta.state");
 
 		public int CurrentFileNumber { get; private set; }
 
 		~PersistentQueueImpl()
 		{
-			if (disposed) return;
+			if (_disposed) return;
 			Dispose();
 		}
 
@@ -188,11 +182,11 @@ namespace DiskQueue.Implementation
 		{
 			lock (_configLock)
 			{
-				if (disposed) return;
+				if (_disposed) return;
 				try
 				{
-					disposed = true;
-					lock (transactionLogLock)
+					_disposed = true;
+					lock (_transactionLogLock)
 					{
 						if (TrimTransactionLogOnDispose) FlushTrimmedTransactionLog();
 					}
@@ -210,7 +204,7 @@ namespace DiskQueue.Implementation
 			Func<Stream, long> action,
 			Action<Stream> onReplaceStream)
 		{
-			lock (writerLock)
+			lock (_writerLock)
 			{
 				if (stream.Position != CurrentFilePosition)
 				{
@@ -222,7 +216,7 @@ namespace DiskQueue.Implementation
 				CurrentFileNumber += 1;
 				var writer = CreateWriter();
 				// we assume same size messages, or near size messages
-				// that gives us a good heuroistic for creating the size of 
+				// that gives us a good heuristic for creating the size of 
 				// the new file, so it wouldn't be fragmented
 				writer.SetLength(CurrentFilePosition);
 				CurrentFilePosition = 0;
@@ -237,7 +231,7 @@ namespace DiskQueue.Implementation
 
 			byte[] transactionBuffer = GenerateTransactionBuffer(operations);
 
-			lock (transactionLogLock)
+			lock (_transactionLogLock)
 			{
 				long txLogSize;
 				using ( var stream = WaitForTransactionLog(transactionBuffer))
@@ -280,28 +274,28 @@ namespace DiskQueue.Implementation
 					Thread.Sleep(250);
 				}
 			}
-			throw new TimeoutException("Could not aquire transaction log lock");
+			throw new TimeoutException("Could not acquire transaction log lock");
 		}
 
-		public Entry Dequeue()
+		public Entry? Dequeue()
 		{
-			lock (entries)
+			lock (_entries)
 			{
-				var first = entries.First;
-				if (first == null)
-					return null;
+				var first = _entries.First;
+				if (first == null) return null;
 				var entry = first.Value;
+				if (entry == null) throw new Exception("Entry queue was in an invalid state: null entry");
 				
 				if (entry.Data == null)
 				{
 					ReadAhead();
 				}
-				entries.RemoveFirst();
+				_entries.RemoveFirst();
 				// we need to create a copy so we will not hold the data
 				// in memory as well as the position
-			    lock (checkedOutEntries)
+			    lock (_checkedOutEntries)
 			    {
-			        checkedOutEntries.Add(new Entry(entry.FileNumber, entry.Start, entry.Length));
+			        _checkedOutEntries.Add(new Entry(entry.FileNumber, entry.Start, entry.Length));
 			    }
 			    return entry;
 			}
@@ -313,9 +307,10 @@ namespace DiskQueue.Implementation
 		private void ReadAhead()
 		{
 			long currentBufferSize = 0;
-			var firstEntry = entries.First.Value;
+			
+			var firstEntry = _entries.First?.Value ?? throw new Exception("Invalid queue state: first entry is null");
 			Entry lastEntry = firstEntry;
-			foreach (var entry in entries)
+			foreach (var entry in _entries)
 			{
 				// we can't read ahead to another file or
 				// if we have unordered queue, or sparse items
@@ -334,7 +329,7 @@ namespace DiskQueue.Implementation
 			byte[] buffer = ReadEntriesFromFile(firstEntry, currentBufferSize);
 
 			var index = 0;
-			foreach (var entry in entries)
+			foreach (var entry in _entries)
 			{
 				entry.Data = new byte[entry.Length];
 				Buffer.BlockCopy(buffer, index, entry.Data, 0, entry.Length);
@@ -370,7 +365,7 @@ namespace DiskQueue.Implementation
 
 		public void Reinstate(IEnumerable<Operation> reinstatedOperations)
 		{
-			lock (entries)
+			lock (_entries)
 			{
 				ApplyTransactionOperations(
 					from entry in reinstatedOperations.Reverse()
@@ -402,7 +397,7 @@ namespace DiskQueue.Implementation
 							// this code ensures that we read the full transaction
 							// before we start to apply it. The last truncated transaction will be
 							// ignored automatically.
-							AssertTransactionSeperator(binaryReader, txCount, Marker.StartTransaction,
+							AssertTransactionSeparator(binaryReader, txCount, Marker.StartTransaction,
 													   () => readingTransaction = true);
 
 							var opsCount = binaryReader.ReadInt32();
@@ -424,7 +419,7 @@ namespace DiskQueue.Implementation
 									requireTxLogTrimming = true;
 							}
                             // check that the end marker is in place
-							AssertTransactionSeperator(binaryReader, txCount, Marker.EndTransaction, () => { });
+							AssertTransactionSeparator(binaryReader, txCount, Marker.EndTransaction, () => { });
 							readingTransaction = false;
 							ApplyTransactionOperations(txOps);
 						}
@@ -450,9 +445,9 @@ namespace DiskQueue.Implementation
 				ms.Write(count, 0, count.Length);
                 
 			    Entry[] checkedOut;
-			    lock (checkedOutEntries)
+			    lock (_checkedOutEntries)
 			    {
-			        checkedOut = checkedOutEntries.ToArray();
+			        checkedOut = _checkedOutEntries.ToArray();
 			    }
 			    foreach (var entry in checkedOut)
 				{
@@ -460,9 +455,9 @@ namespace DiskQueue.Implementation
 				}
 
 			    Entry[] listedEntries;
-                lock (entries)
+                lock (_entries)
                 {
-                    listedEntries = ToArray(entries);
+                    listedEntries = ToArray(_entries);
 			    }
 
 			    foreach (var entry in listedEntries)
@@ -483,7 +478,7 @@ namespace DiskQueue.Implementation
         /// <summary>
         /// This special purpose function is to work around potential issues with Mono
         /// </summary>
-	    private static Entry[] ToArray(LinkedList<Entry> list)
+	    private static Entry[] ToArray(LinkedList<Entry>? list)
         {
             if (list == null) return new Entry[0];
             var outp = new List<Entry>(25);
@@ -520,7 +515,7 @@ namespace DiskQueue.Implementation
             ThrowIfStrict("Unexpected data in transaction log. Expected to get transaction separator but got unknown data");
         }
 
-        public int[] ApplyTransactionOperationsInMemory(IEnumerable<Operation> operations)
+        public int[] ApplyTransactionOperationsInMemory(IEnumerable<Operation>? operations)
 		{
 			if (operations == null) return Array.Empty<int>();
 			
@@ -530,35 +525,35 @@ namespace DiskQueue.Implementation
 				{
 					case OperationType.Enqueue:
 						var entryToAdd = new Entry(operation);
-						lock (entries) { entries.AddLast(entryToAdd); }
-						var itemCountAddition = countOfItemsPerFile.GetValueOrDefault(entryToAdd.FileNumber);
-						countOfItemsPerFile[entryToAdd.FileNumber] = itemCountAddition + 1;
+						lock (_entries) { _entries.AddLast(entryToAdd); }
+						var itemCountAddition = _countOfItemsPerFile.GetValueOrDefault(entryToAdd.FileNumber);
+						_countOfItemsPerFile[entryToAdd.FileNumber] = itemCountAddition + 1;
 						break;
 
 					case OperationType.Dequeue:
 						var entryToRemove = new Entry(operation);
-						lock (checkedOutEntries) { checkedOutEntries.Remove(entryToRemove); }
-						var itemCountRemoval = countOfItemsPerFile.GetValueOrDefault(entryToRemove.FileNumber);
-						countOfItemsPerFile[entryToRemove.FileNumber] = itemCountRemoval - 1;
+						lock (_checkedOutEntries) { _checkedOutEntries.Remove(entryToRemove); }
+						var itemCountRemoval = _countOfItemsPerFile.GetValueOrDefault(entryToRemove.FileNumber);
+						_countOfItemsPerFile[entryToRemove.FileNumber] = itemCountRemoval - 1;
 						break;
 
 					case OperationType.Reinstate:
 						var entryToReinstate = new Entry(operation);
-						lock (entries ) { entries.AddFirst(entryToReinstate); }
-						lock (checkedOutEntries) { checkedOutEntries.Remove(entryToReinstate); }
+						lock (_entries ) { _entries.AddFirst(entryToReinstate); }
+						lock (_checkedOutEntries) { _checkedOutEntries.Remove(entryToReinstate); }
 						break;
 				}
 			}
 
 			var filesToRemove = new HashSet<int>(
-				from pair in countOfItemsPerFile
+				from pair in _countOfItemsPerFile
 				where pair.Value < 1
 				select pair.Key
 				);
 
 			foreach (var i in filesToRemove)
 			{
-				countOfItemsPerFile.Remove(i);
+				_countOfItemsPerFile.Remove(i);
 			}
 			return filesToRemove.ToArray();
 		}
@@ -569,7 +564,7 @@ namespace DiskQueue.Implementation
         /// </summary>
 	    private void ThrowIfStrict(string msg)
 	    {
-	        if (throwOnConflict)
+	        if (_throwOnConflict)
 	        {
 	            throw new InvalidOperationException(msg);
 	        }
@@ -577,7 +572,7 @@ namespace DiskQueue.Implementation
 	        throw new EndOfStreamException();   // silently truncate transactions
 	    }
 
-	    private void AssertTransactionSeperator(BinaryReader binaryReader, int txCount, Marker whichSeparator, Action hasData)
+	    private void AssertTransactionSeparator(BinaryReader binaryReader, int txCount, Marker whichSeparator, Action hasData)
 		{
 			var bytes = binaryReader.ReadBytes(16);
 			if (bytes.Length == 0) throw new EndOfStreamException();
@@ -654,7 +649,7 @@ namespace DiskQueue.Implementation
 		private void ApplyTransactionOperations(IEnumerable<Operation> operations)
 		{
 			int[] filesToRemove;
-			lock (entries)
+			lock (_entries)
 			{
 				filesToRemove = ApplyTransactionOperationsInMemory(operations);
 			}
@@ -706,7 +701,7 @@ namespace DiskQueue.Implementation
 
 		public string GetDataPath(int index)
 		{
-			return Path.Combine(path, "data." + index);
+			return Path.Combine(_path, "data." + index);
 		}
 
 		private long GetOptimalTransactionLogSize()

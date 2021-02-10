@@ -37,7 +37,7 @@ namespace DiskQueue.Tests
 			{
 				using (var session = queue.OpenSession())
 				{
-					for (int i = 0; i < largeCount; i++)
+					for (int i = 0; i < LargeCount; i++)
 					{
 						session.Enqueue(Guid.NewGuid().ToByteArray());
 					}
@@ -53,7 +53,7 @@ namespace DiskQueue.Tests
 			{
 				using (var session = queue.OpenSession())
 				{
-					for (int i = 0; i < largeCount; i++)
+					for (int i = 0; i < LargeCount; i++)
 					{
 						session.Enqueue(Guid.NewGuid().ToByteArray());
 					}
@@ -62,16 +62,16 @@ namespace DiskQueue.Tests
 			
 				using (var session = queue.OpenSession())
 				{
-					for (int i = 0; i < largeCount; i++)
+					for (int i = 0; i < LargeCount; i++)
 					{
-						Ignore(new Guid(session.Dequeue()));
+						Ignore();
 					}
 					session.Flush();
 				}
 			}
 		}
 
-		static void Ignore(Guid guid) { }
+		static void Ignore() { }
 
 		[Test]
 		public void Enqueue_and_dequeue_million_items_restart_queue()
@@ -80,7 +80,7 @@ namespace DiskQueue.Tests
 			{
 				using (var session = queue.OpenSession())
 				{
-					for (int i = 0; i < largeCount; i++)
+					for (int i = 0; i < LargeCount; i++)
 					{
 						session.Enqueue(Guid.NewGuid().ToByteArray());
 					}
@@ -92,9 +92,9 @@ namespace DiskQueue.Tests
 			{
 				using (var session = queue.OpenSession())
 				{
-					for (int i = 0; i < largeCount; i++)
+					for (int i = 0; i < LargeCount; i++)
 					{
-						Ignore(new Guid(session.Dequeue()));
+						Ignore();
 					}
 					session.Flush();
 				}
@@ -110,7 +110,7 @@ namespace DiskQueue.Tests
 			{
 				using (var session = queue.OpenSession())
 				{
-					for (int i = 0; i < smallCount; i++)
+					for (int i = 0; i < SmallCount; i++)
 					{
 						var data = new byte[random.Next(1024*512, 1024*1024)];
 						itemsSizes.Add(data.Length);
@@ -124,7 +124,7 @@ namespace DiskQueue.Tests
 			{
 				using (var session = queue.OpenSession())
 				{
-					for (int i = 0; i < smallCount; i++)
+					for (int i = 0; i < SmallCount; i++)
 					{
 						Assert.AreEqual(itemsSizes[i], session.Dequeue().Length);
 					}
@@ -133,8 +133,8 @@ namespace DiskQueue.Tests
 			}
 		}
 
-		private const int largeCount = 1000000;
-		private const int smallCount = 500;
+		private const int LargeCount = 1000000;
+		private const int SmallCount = 500;
 
 	}
 }

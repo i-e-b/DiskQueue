@@ -11,15 +11,13 @@ namespace DiskQueue.Implementation
 		/// Ensure a key is present in the dictionary. Uses default value if needed.
 		/// Return stored value for the key
 		/// </summary>
-		public static T GetOrCreateValue<T,K>(this IDictionary<K,T> self, K key)
-			where T : new()
+		public static TV GetOrCreateValue<TV,TK>(this IDictionary<TK,TV> self, TK key)
+			where TV : new()
 		{
-			T value;
-			if (self.TryGetValue(key, out value) == false)
-			{
-				value = new T();
-				self.Add(key, value);
-			}
+			if (self.TryGetValue(key, out var value)) return value;
+			
+			value = new TV();
+			self.Add(key, value);
 			return value;
 		}
 
@@ -27,10 +25,9 @@ namespace DiskQueue.Implementation
 		/// Return value for key if present, otherwise return default.
 		/// No new keys or values will be added to the dictionary.
 		/// </summary>
-		public static T GetValueOrDefault<T, K>(this IDictionary<K, T> self, K key)
+		public static TV? GetValueOrDefault<TV, TK>(this IDictionary<TK, TV> self, TK key)
 		{
-			T value;
-			return self.TryGetValue(key, out value) == false ? default(T) : value;
+			return self.TryGetValue(key, out var value) == false ? default : value;
 		}
 	}
 }

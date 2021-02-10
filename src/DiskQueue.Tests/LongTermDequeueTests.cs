@@ -10,33 +10,33 @@ namespace DiskQueue.Tests
 		IPersistentQueue _q;
 
 		[SetUp]
-		public void setup()
+		public void Setup()
 		{
 			_q = PersistentQueue.WaitFor("./queue", TimeSpan.FromSeconds(10));
 		}
 
 		[TearDown]
-		public void teardown()
+		public void Teardown()
 		{
-			_q.Dispose();
+			_q?.Dispose();
 		}
 
 		[Test]
 		public void can_enqueue_during_a_long_dequeue ()
 		{
-			var s1 = _q.OpenSession();
+			var s1 = _q?.OpenSession();
 
-			using (var s2 = _q.OpenSession())
+			using (var s2 = _q?.OpenSession())
 			{
-				s2.Enqueue(new byte[]{1,2,3,4});
-				s2.Flush();
+				s2?.Enqueue(new byte[]{1,2,3,4});
+				s2?.Flush();
 			}
 
-			var x = s1.Dequeue();
-			s1.Flush();
-			s1.Dispose();
+			var x = s1?.Dequeue();
+			s1?.Flush();
+			s1?.Dispose();
 
-			Assert.That(x.SequenceEqual(new byte[]{1,2,3,4}));
+			Assert.That(x!.SequenceEqual(new byte[]{1,2,3,4}));
 		}
 
 	}

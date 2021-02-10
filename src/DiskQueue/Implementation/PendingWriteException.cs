@@ -37,7 +37,7 @@ namespace DiskQueue.Implementation
 	[Serializable]
 	public class PendingWriteException : Exception
 	{
-		private readonly Exception[] pendingWritesExceptions;
+		private readonly Exception[] _pendingWritesExceptions;
 
 		/// <summary>
 		/// Aggregate causing exceptions
@@ -45,16 +45,13 @@ namespace DiskQueue.Implementation
 		public PendingWriteException(Exception[] pendingWritesExceptions)
 			: base("Error during pending writes")
 		{
-			this.pendingWritesExceptions = pendingWritesExceptions;
+			_pendingWritesExceptions = pendingWritesExceptions;
 		}
 
 		/// <summary>
 		/// Set of causing exceptions
 		/// </summary>
-		public Exception[] PendingWritesExceptions
-		{
-			get { return pendingWritesExceptions; }
-		}
+		public Exception[] PendingWritesExceptions => _pendingWritesExceptions;
 
 		/// <summary>
 		/// Gets a message that describes the current exception.
@@ -63,10 +60,10 @@ namespace DiskQueue.Implementation
 		{
 			get
 			{
-				var sb = new StringBuilder(base.Message).Append(":");
-				foreach (var exception in pendingWritesExceptions)
+				var sb = new StringBuilder(base.Message ?? "Error").Append(":");
+				foreach (var exception in _pendingWritesExceptions)
 				{
-					sb.AppendLine().Append(" - ").Append(exception.Message);
+					sb.AppendLine().Append(" - ").Append(exception.Message??"<unknown>");
 				}
 				return sb.ToString();
 			}
@@ -77,8 +74,8 @@ namespace DiskQueue.Implementation
 		/// </summary>
 		public override string ToString()
 		{
-			var sb = new StringBuilder(base.Message).Append(":");
-			foreach (var exception in pendingWritesExceptions)
+			var sb = new StringBuilder(base.Message ?? "Error").Append(":");
+			foreach (var exception in _pendingWritesExceptions)
 			{
 				sb.AppendLine().Append(" - ").Append(exception);
 			}

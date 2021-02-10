@@ -8,6 +8,12 @@ namespace DiskQueue.Implementation
 	public class Entry : IEquatable<Entry>
 	{
 		/// <summary>
+		/// The actual data for this entry. 
+		/// This only has value coming _out_ of the queue.
+		/// </summary>
+		public byte[]? Data { get; set; }
+		
+		/// <summary>
 		/// Represents an entry in a file by file number, position and span
 		/// </summary>
 		public Entry(int fileNumber, int start, int length)
@@ -25,11 +31,6 @@ namespace DiskQueue.Implementation
 		{
 		}
 
-		/// <summary>
-		/// The actual data for this entry. 
-		/// This only has value coming _out_ of the queue.
-		/// </summary>
-		public byte[] Data { get; set; }
 		
 		/// <summary> File number </summary>
 		public int FileNumber { get; }
@@ -41,9 +42,9 @@ namespace DiskQueue.Implementation
 		/// <summary>
 		/// Compare this entry to other for exact equality
 		/// </summary>
-		public bool Equals(Entry obj)
+		public bool Equals(Entry? obj)
 		{
-			if (ReferenceEquals(null, obj)) return false;
+			if (ReferenceEquals(null!, obj!)) return false;
 			if (ReferenceEquals(this, obj)) return true;
 			return obj.FileNumber == FileNumber && obj.Start == Start && obj.Length == Length;
 		}
@@ -51,10 +52,9 @@ namespace DiskQueue.Implementation
 		/// <summary>
 		/// Compare this entry to other for exact equality
 		/// </summary>
-		public override bool Equals(object obj)
+		public override bool Equals(object? obj)
 		{
-			if (ReferenceEquals(null, obj)) return false;
-			if (ReferenceEquals(this, obj)) return true;
+			if (ReferenceEquals(this, obj!)) return true;
 			return Equals(obj as Entry);
 		}
 		
@@ -75,16 +75,18 @@ namespace DiskQueue.Implementation
 		/// <summary>
 		/// Compare entries by value
 		/// </summary>
-		public static bool operator ==(Entry left, Entry right)
+		public static bool operator ==(Entry? left, Entry? right)
 		{
+			if (ReferenceEquals(left!, null!) || ReferenceEquals(right!, null!)) return ReferenceEquals(left!, null!) && ReferenceEquals(right!, null!);
 			return Equals(left, right);
 		}
 		
 		/// <summary>
 		/// Compare entries by value
 		/// </summary>
-		public static bool operator !=(Entry left, Entry right)
+		public static bool operator !=(Entry? left, Entry? right)
 		{
+			if (ReferenceEquals(left!, null!) || ReferenceEquals(right!, null!)) return !(ReferenceEquals(left!, null!) && ReferenceEquals(right!, null!));
 			return !Equals(left, right);
 		}
 	}

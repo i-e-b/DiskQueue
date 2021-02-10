@@ -1,4 +1,7 @@
 using System;
+// ReSharper disable IdentifierTypo
+// ReSharper disable InconsistentNaming
+// ReSharper disable UnusedMember.Global
 
 namespace DiskQueue.Implementation.CrossPlatform.Unix
 {

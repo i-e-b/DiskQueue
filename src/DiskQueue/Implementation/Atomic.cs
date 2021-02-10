@@ -35,7 +35,7 @@ namespace DiskQueue.Implementation
 	/// That is, either we completely succeed or completely fail in writing to the file.
 	/// Read will correct previous failed transaction if a previous write has failed.
 	/// Assumptions:
-	///  * You want to always rewrite the file, rathar than edit it.
+	///  * You want to always rewrite the file, rather than edit it.
 	///  * The underlying file system has at least transactional metadata.
 	///  * Thread safety is provided by the calling code.
 	/// 
@@ -122,7 +122,7 @@ namespace DiskQueue.Implementation
 		/// <summary>
 		/// Flush a stream, checking to see if its a file -- in which case it will ask for a flush-to-disk.
 		/// </summary>
-		public static void HardFlush(this Stream stream)
+		public static void HardFlush(this Stream? stream)
 		{
 			if (stream == null) return;
 			if (stream is FileStream fs) fs.Flush(true);

@@ -22,7 +22,7 @@ namespace DiskQueue
 		int EstimatedCountOfItemsInQueue { get; }
 
 		/// <summary>
-		/// Internal adjustables. Use with caution. Read the source code.
+		/// Advanced adjustable settings. Use with caution. Read the source code.
 		/// </summary>
 		IPersistentQueueImpl Internals { get; }
 

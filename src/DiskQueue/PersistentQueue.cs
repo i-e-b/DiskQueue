@@ -15,7 +15,7 @@ namespace DiskQueue
 	/// </summary>
 	public sealed class PersistentQueue : IPersistentQueue
 	{
-		PersistentQueueImpl _queue;
+		PersistentQueueImpl? _queue;
 
 		/// <summary>
 		/// Wait a maximum time to open an exclusive session.
@@ -55,7 +55,7 @@ namespace DiskQueue
 			{
 				sw.Stop();
 			}
-			throw new TimeoutException("Could not aquire a lock in the time specified");
+			throw new TimeoutException("Could not acquire a lock in the time specified");
 		}
 
 		/// <summary>
@@ -116,18 +116,18 @@ namespace DiskQueue
 		/// Returns the number of items in the queue, but does not include items added or removed
 		/// in currently open sessions.
 		/// </summary>
-		public int EstimatedCountOfItemsInQueue { get { return _queue.EstimatedCountOfItemsInQueue; } }
+		public int EstimatedCountOfItemsInQueue => _queue?.EstimatedCountOfItemsInQueue ?? 0;
 
 		/// <summary>
-		/// Internal adjustables. Use with caution. Read the source code.
+		/// Advanced adjustable settings. Use with caution. Read the source code.
 		/// </summary>
-		public IPersistentQueueImpl Internals { get { return _queue; } }
+		public IPersistentQueueImpl Internals => _queue ?? throw new InvalidOperationException("Internals not available in this state");
 
 		/// <summary>
 		/// Maximum size of files in queue. New files will be rolled-out if this is exceeded.
 		/// (i.e. this is NOT the maximum size of the queue)
 		/// </summary>
-		public int MaxFileSize { get { return _queue.MaxFileSize; } }
+		public int MaxFileSize => _queue?.MaxFileSize ?? 0;
 
 		/// <summary>
 		/// If the transaction log is near this size, it will be flushed and trimmed.
@@ -135,8 +135,8 @@ namespace DiskQueue
 		/// </summary>
 		public long SuggestedMaxTransactionLogSize
 		{
-			get { return _queue.SuggestedMaxTransactionLogSize; }
-			set { _queue.SuggestedMaxTransactionLogSize = value; }
+			get => _queue?.SuggestedMaxTransactionLogSize ?? 0;
+			set { if (_queue != null) _queue.SuggestedMaxTransactionLogSize = value; }
 		}
 
 		/// <summary>
@@ -146,8 +146,8 @@ namespace DiskQueue
 		/// </summary>
 		public bool TrimTransactionLogOnDispose
 		{
-			get { return _queue.TrimTransactionLogOnDispose; }
-			set { _queue.TrimTransactionLogOnDispose = value; }
+			get => _queue?.TrimTransactionLogOnDispose ?? true;
+			set { if (_queue != null) _queue.TrimTransactionLogOnDispose = value; }
 		}
 	}
 }

@@ -11,18 +11,20 @@ namespace DiskQueue.Tests
 		[Test]
 		public void can_enqueue_and_dequeue_on_separate_threads ()
 		{
+			// ReSharper disable InconsistentNaming
 			int t1s, t2s;
+			// ReSharper restore InconsistentNaming
 			t1s = t2s = 0;
 			const int target = 100;
 			var rnd = new Random();
 
 
-			IPersistentQueue _subject = new PersistentQueue("queue_a");
+			IPersistentQueue subject = new PersistentQueue("queue_a");
 			var t1 = new Thread(() =>
 			{
 				for (int i = 0; i < target; i++)
 				{
-					using (var session = _subject.OpenSession())
+					using (var session = subject.OpenSession())
 					{
 						Console.Write("(");
 						session.Enqueue(new byte[] { 1, 2, 3, 4 });
@@ -36,7 +38,7 @@ namespace DiskQueue.Tests
 			var t2 = new Thread(()=> {
 				for (int i = 0; i < target; i++)
 				{
-					using (var session = _subject.OpenSession())
+					using (var session = subject.OpenSession())
 					{
 						Console.Write("<");
 						session.Dequeue();
@@ -60,7 +62,9 @@ namespace DiskQueue.Tests
 		[Test]
 		public void can_sequence_queues_on_separate_threads ()
 		{
+			// ReSharper disable InconsistentNaming
 			int t1s, t2s;
+			// ReSharper restore InconsistentNaming
 			t1s = t2s = 0;
 			const int target = 100;
 

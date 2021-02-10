@@ -13,18 +13,18 @@ namespace DiskQueue.Implementation
 	/// </summary>
 	public sealed class PersistentQueueSession : IPersistentQueueSession
 	{
-		private readonly List<Operation> operations = new List<Operation>();
-		private readonly IList<Exception> pendingWritesFailures = new List<Exception>();
-		private readonly IList<WaitHandle> pendingWritesHandles = new List<WaitHandle>();
-		private Stream currentStream;
-		private readonly int writeBufferSize;
-		private readonly IPersistentQueueImpl queue;
-		private readonly List<Stream> streamsToDisposeOnFlush = new List<Stream>();
-		static readonly object _ctorLock = new object();
-		volatile bool disposed;
+		private readonly List<Operation> _operations = new();
+		private readonly List<Exception> _pendingWritesFailures = new();
+		private readonly List<WaitHandle> _pendingWritesHandles = new();
+		private Stream _currentStream;
+		private readonly int _writeBufferSize;
+		private readonly IPersistentQueueImpl _queue;
+		private readonly List<Stream> _streamsToDisposeOnFlush = new();
+		static readonly object _ctorLock = new();
+		volatile bool _disposed;
 
-		private readonly List<byte[]> buffer = new List<byte[]>();
-		private int bufferSize;
+		private readonly List<byte[]> _buffer = new();
+		private int _bufferSize;
 
 		private const int MinSizeThatMakeAsyncWritePractical = 64 * 1024;
 
@@ -37,12 +37,12 @@ namespace DiskQueue.Implementation
 		{
 			lock (_ctorLock)
 			{
-				this.queue = queue;
-				this.currentStream = currentStream;
+				this._queue = queue;
+				this._currentStream = currentStream;
 				if (writeBufferSize < MinSizeThatMakeAsyncWritePractical)
 					writeBufferSize = MinSizeThatMakeAsyncWritePractical;
-				this.writeBufferSize = writeBufferSize;
-				disposed = false;
+				this._writeBufferSize = writeBufferSize;
+				_disposed = false;
 			}
 		}
 
@@ -51,9 +51,9 @@ namespace DiskQueue.Implementation
 		/// </summary>
 		public void Enqueue(byte[] data)
 		{
-			buffer.Add(data);
-			bufferSize += data.Length;
-			if (bufferSize > writeBufferSize)
+			_buffer.Add(data);
+			_bufferSize += data.Length;
+			if (_bufferSize > _writeBufferSize)
 			{
 				AsyncFlushBuffer();
 			}
@@ -61,12 +61,12 @@ namespace DiskQueue.Implementation
 
 		private void AsyncFlushBuffer()
 		{
-			queue.AcquireWriter(currentStream, AsyncWriteToStream, OnReplaceStream);
+			_queue.AcquireWriter(_currentStream, AsyncWriteToStream, OnReplaceStream);
 		}
 
 		private void SyncFlushBuffer()
 		{
-			queue.AcquireWriter(currentStream, stream =>
+			_queue.AcquireWriter(_currentStream, stream =>
 			{
 				byte[] data = ConcatenateBufferAndAddIndividualOperations(stream);
 				stream.Write(data, 0, data.Length);
@@ -78,7 +78,7 @@ namespace DiskQueue.Implementation
 		{
 			byte[] data = ConcatenateBufferAndAddIndividualOperations(stream);
 			var resetEvent = new ManualResetEvent(false);
-			pendingWritesHandles.Add(resetEvent);
+			_pendingWritesHandles.Add(resetEvent);
 			long positionAfterWrite = stream.Position + data.Length;
 			stream.BeginWrite(data, 0, data.Length, delegate(IAsyncResult ar)
 			{
@@ -88,29 +88,29 @@ namespace DiskQueue.Implementation
 				}
 				catch (Exception e)
 				{
-					lock (pendingWritesFailures)
+					lock (_pendingWritesFailures)
 					{
-						pendingWritesFailures.Add(e);
+						_pendingWritesFailures.Add(e);
 					}
 				}
 				finally
 				{
 					resetEvent.Set();
 				}
-			}, null);
+			}, null!);
 			return positionAfterWrite;
 		}
 
 		private byte[] ConcatenateBufferAndAddIndividualOperations(Stream stream)
 		{
-			var data = new byte[bufferSize];
+			var data = new byte[_bufferSize];
 			var start = (int)stream.Position;
 			var index = 0;
-			foreach (var bytes in buffer)
+			foreach (var bytes in _buffer)
 			{
-				operations.Add(new Operation(
+				_operations.Add(new Operation(
 					OperationType.Enqueue,
-					queue.CurrentFileNumber,
+					_queue.CurrentFileNumber,
 					start,
 					bytes.Length
 				));
@@ -118,26 +118,26 @@ namespace DiskQueue.Implementation
 				start += bytes.Length;
 				index += bytes.Length;
 			}
-			bufferSize = 0;
-			buffer.Clear();
+			_bufferSize = 0;
+			_buffer.Clear();
 			return data;
 		}
 
 		private void OnReplaceStream(Stream newStream)
 		{
-			streamsToDisposeOnFlush.Add(currentStream);
-			currentStream = newStream;
+			_streamsToDisposeOnFlush.Add(_currentStream);
+			_currentStream = newStream;
 		}
 
 		/// <summary>
 		/// Try to pull data from the queue. Data is removed from the queue on `Flush()`
 		/// </summary>
-		public byte[] Dequeue()
+		public byte[]? Dequeue()
 		{
-			var entry = queue.Dequeue();
+			var entry = _queue.Dequeue();
 			if (entry == null)
 				return null;
-			operations.Add(new Operation(
+			_operations.Add(new Operation(
 				OperationType.Dequeue,
 				entry.FileNumber,
 				entry.Start,
@@ -160,26 +160,26 @@ namespace DiskQueue.Implementation
 			}
 			finally
 			{
-				foreach (var stream in streamsToDisposeOnFlush)
+				foreach (var stream in _streamsToDisposeOnFlush)
 				{
 					stream.HardFlush();
 					stream.Dispose();
 				}
-				streamsToDisposeOnFlush.Clear();
+				_streamsToDisposeOnFlush.Clear();
 			}
-			currentStream.HardFlush();
-			queue.CommitTransaction(operations);
-			operations.Clear();
+			_currentStream.HardFlush();
+			_queue.CommitTransaction(_operations);
+			_operations.Clear();
 		}
 
 		private void WaitForPendingWrites()
 		{
-			while (pendingWritesHandles.Count != 0)
+			while (_pendingWritesHandles.Count != 0)
 			{
-				var handles = pendingWritesHandles.Take(64).ToArray();
+				var handles = _pendingWritesHandles.Take(64).ToArray();
 				foreach (var handle in handles)
 				{
-					pendingWritesHandles.Remove(handle);
+					_pendingWritesHandles.Remove(handle);
 				}
 				WaitHandle.WaitAll(handles);
 				foreach (var handle in handles)
@@ -192,13 +192,13 @@ namespace DiskQueue.Implementation
 
 		private void AssertNoPendingWritesFailures()
 		{
-			lock (pendingWritesFailures)
+			lock (_pendingWritesFailures)
 			{
-				if (pendingWritesFailures.Count == 0)
+				if (_pendingWritesFailures.Count == 0)
 					return;
 
-				var array = pendingWritesFailures.ToArray();
-				pendingWritesFailures.Clear();
+				var array = _pendingWritesFailures.ToArray();
+				_pendingWritesFailures.Clear();
 				throw new PendingWriteException(array);
 			}
 		}
@@ -210,27 +210,27 @@ namespace DiskQueue.Implementation
 		{
 			lock (_ctorLock)
 			{
-				if (disposed) return;
-				disposed = true;
-				queue.Reinstate(operations);
-				operations.Clear();
-				foreach (var stream in streamsToDisposeOnFlush)
+				if (_disposed) return;
+				_disposed = true;
+				_queue.Reinstate(_operations);
+				_operations.Clear();
+				foreach (var stream in _streamsToDisposeOnFlush)
 				{
 					stream.Dispose();
 				}
-				currentStream.Dispose();
+				_currentStream.Dispose();
 				GC.SuppressFinalize(this);
 			}
 			Thread.Sleep(0);
 		}
 
 		/// <summary>
-		/// Dispose queue on destructor. This is a safty-valve. You should ensure you
+		/// Dispose queue on destructor. This is a safety-valve. You should ensure you
 		/// dispose of sessions normally.
 		/// </summary>
 		~PersistentQueueSession()
 		{
-			if (disposed) return;
+			if (_disposed) return;
 			Dispose();
 		}
 	}

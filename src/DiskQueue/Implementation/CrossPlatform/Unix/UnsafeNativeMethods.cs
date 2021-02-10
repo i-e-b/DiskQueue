@@ -1,4 +1,6 @@
 ﻿using System.Runtime.InteropServices;
+// ReSharper disable StringLiteralTypo
+// ReSharper disable InconsistentNaming
 
 namespace DiskQueue.Implementation.CrossPlatform.Unix
 {

@@ -17,7 +17,7 @@ namespace DiskQueue
 		/// <summary>
 		/// Try to pull data from the queue. Data is removed from the queue on `Flush()`
 		/// </summary>
-		byte[] Dequeue();
+		byte[]? Dequeue();
 
 		/// <summary>
 		/// Commit actions taken in this session since last flush.
