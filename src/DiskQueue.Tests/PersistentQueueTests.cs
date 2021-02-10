@@ -95,6 +95,19 @@ namespace DiskQueue.Tests
 				CollectionAssert.AreEqual(new byte[] { 1, 2, 3, 4 }, session.Dequeue());
 			}
 		}
+		
+
+		[Test]
+		public void Queueing_and_dequeueing_empty_data_is_handled()
+		{
+			using (var queue = new PersistentQueue(Path))
+			using (var session = queue.OpenSession())
+			{
+				session.Enqueue(new byte[0]);
+				session.Flush();
+				CollectionAssert.AreEqual(new byte[0], session.Dequeue());
+			}
+		}
 
 		[Test]
 		public void Can_enqueue_and_dequeue_data_after_restarting_queue()

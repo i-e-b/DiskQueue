@@ -151,6 +151,7 @@ namespace DiskQueue.Implementation
 		/// <para>This is slow, but ensures the log is correct per transaction in the event of a hard termination (i.e. power failure)</para>
 		/// </summary>
 		public bool ParanoidFlushing { get; set; }
+		public bool AllowTruncatedEntries { get; set; }
 
 		private int CurrentCountOfItemsInQueue
 		{
@@ -243,7 +244,7 @@ namespace DiskQueue.Implementation
 				{
 					stream.Write(transactionBuffer, 0, transactionBuffer.Length);
 					txLogSize = stream.Position;
-					stream.Flush();
+					stream.HardFlush();
 				}
 
 				ApplyTransactionOperations(operations);
@@ -355,8 +356,7 @@ namespace DiskQueue.Implementation
 				do
 				{
 					var bytesRead = reader.Read(buffer, totalRead, buffer.Length - totalRead);
-					if (bytesRead == 0)
-						throw new InvalidOperationException("End of file reached while trying to read queue item");
+					if (!AllowTruncatedEntries && bytesRead == 0) throw new InvalidOperationException("End of file reached while trying to read queue item");
 					totalRead += bytesRead;
 				} while (totalRead < buffer.Length);
 			}
@@ -470,7 +470,7 @@ namespace DiskQueue.Implementation
 					WriteEntryToTransactionLog(ms, entry, OperationType.Enqueue);
 				}
 				ms.Write(Constants.EndTransactionSeparator, 0, Constants.EndTransactionSeparator.Length);
-				ms.Flush();
+				ms.HardFlush();
 				transactionBuffer = ms.ToArray();
 			}
 			Atomic.Write(TransactionLog, stream =>
@@ -683,7 +683,7 @@ namespace DiskQueue.Implementation
 				}
 				ms.Write(Constants.EndTransactionSeparator, 0, Constants.EndTransactionSeparator.Length);
 
-				ms.Flush();
+				ms.HardFlush();
 				transactionBuffer = ms.ToArray();
 			}
 			return transactionBuffer;

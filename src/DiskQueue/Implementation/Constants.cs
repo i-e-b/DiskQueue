@@ -37,7 +37,14 @@ namespace DiskQueue.Implementation
     /// </summary>
     public enum Marker
     {
+	    /// <summary>
+	    /// Start of a transaction (all bits 0)
+	    /// </summary>
         StartTransaction = 0,
+	    
+	    /// <summary>
+	    /// End of a transaction (all bits 1)
+	    /// </summary>
         EndTransaction = -1
     }
 }

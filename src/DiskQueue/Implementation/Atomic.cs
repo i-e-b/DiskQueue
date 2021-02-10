@@ -96,7 +96,7 @@ namespace DiskQueue.Implementation
 			lock (_lock)
 			{
 				// if the old copy file exists, this means that we have
-				// a previous corrupt write, so we will not overrite it, but 
+				// a previous corrupt write, so we will not overwrite it, but 
 				// rather overwrite the current file and keep it as our backup.
 				if (File.Exists(path + ".old_copy") == false)
 					File.Move(path, path + ".old_copy");
@@ -112,11 +112,21 @@ namespace DiskQueue.Implementation
 				{
 					SetPermissions.TryAllowReadWriteForAll(path);
 					action(stream);
-					stream.Flush();
+					stream.HardFlush();
 				}
 				
 				WaitDelete(path + ".old_copy");
 			}
+		}
+
+		/// <summary>
+		/// Flush a stream, checking to see if its a file -- in which case it will ask for a flush-to-disk.
+		/// </summary>
+		public static void HardFlush(this Stream stream)
+		{
+			if (stream == null) return;
+			if (stream is FileStream fs) fs.Flush(true);
+			stream.Flush();
 		}
 
 		static bool WaitDelete(string s)

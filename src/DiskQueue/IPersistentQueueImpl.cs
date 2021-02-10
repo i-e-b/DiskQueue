@@ -60,5 +60,11 @@ namespace DiskQueue
 		/// <para>This is slow, but ensures the log is correct per transaction in the event of a hard termination (i.e. power failure)</para>
 		/// </summary>
 		bool ParanoidFlushing { get; set; }
+
+		/// <summary>
+		/// Setting this to true will prevent some file-system level errors from stopping the queue.
+		/// <para>Only use this if uptime is more important than correctness of data</para>
+		/// </summary>
+		bool AllowTruncatedEntries { get; set; }
 	}
 }

@@ -162,12 +162,12 @@ namespace DiskQueue.Implementation
 			{
 				foreach (var stream in streamsToDisposeOnFlush)
 				{
-					stream.Flush();
+					stream.HardFlush();
 					stream.Dispose();
 				}
 				streamsToDisposeOnFlush.Clear();
 			}
-			currentStream.Flush();
+			currentStream.HardFlush();
 			queue.CommitTransaction(operations);
 			operations.Clear();
 		}
