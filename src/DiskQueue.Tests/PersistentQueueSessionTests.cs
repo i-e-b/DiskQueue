@@ -4,6 +4,9 @@ using NSubstitute.Core;
 using NUnit.Framework;
 using System;
 using System.IO;
+using System.Linq;
+using DiskQueue.Tests.Helpers;
+
 // ReSharper disable PossibleNullReferenceException
 
 namespace DiskQueue.Tests
@@ -74,19 +77,93 @@ namespace DiskQueue.Tests
 
             Assert.That(invalidOperationException.Message, Is.EqualTo("End of file reached while trying to read queue item"));
         }
+        
+        [Test]
+        public void If_data_stream_is_truncated_will_NOT_raise_error_if_truncated_entries_are_allowed_in_settings()
+        {
+            PersistentQueue.DefaultSettings.AllowTruncatedEntries = true;
+            PersistentQueue.DefaultSettings.ParanoidFlushing = true;
+            
+            using (var queue = new PersistentQueue(Path))
+            {
+                using (var session = queue.OpenSession())
+                {
+                    session.Enqueue(new byte[] { 1, 2, 3, 4 });
+                    session.Flush();
+                }
+            }
+            using (var fs = new FileStream(System.IO.Path.Combine(Path, "data.0"), FileMode.Open))
+            {
+                fs.SetLength(2);//corrupt the file
+            }
+
+            byte[]? bytes;
+            using (var queue = new PersistentQueue(Path))
+            {
+                using (var session = queue.OpenSession())
+                {
+                    bytes = session.Dequeue();
+                }
+            }
+
+            PersistentQueue.DefaultSettings.AllowTruncatedEntries = false; // reset to default
+            Assert.That(bytes, Is.Null);
+        }
+        
+        [Test]
+        public void If_data_stream_is_truncated_the_queue_can_still_be_used()
+        {
+            PersistentQueue.DefaultSettings.AllowTruncatedEntries = true;
+            
+            using (var queue = new PersistentQueue(Path))
+            {
+                using (var session = queue.OpenSession())
+                {
+                    session.Enqueue(new byte[] { 1, 2, 3, 4 });
+                    session.Flush();
+                }
+            }
+            using (var fs = new FileStream(System.IO.Path.Combine(Path, "data.0"), FileMode.Open))
+            {
+                fs.SetLength(2);//corrupt the file
+            }
+
+            using (var queue = new PersistentQueue(Path))
+            {
+                using (var session = queue.OpenSession())
+                {
+                    session.Enqueue(new byte[] { 5,6,7,8 });
+                    session.Flush();
+                }
+            }
+
+            byte[]? bytes, corruptBytes;
+            using (var queue = new PersistentQueue(Path))
+            {
+                using (var session = queue.OpenSession())
+                {
+                    corruptBytes = session.Dequeue();
+                    bytes = session.Dequeue();
+                }
+            }
+            
+            Console.WriteLine(string.Join(", ", corruptBytes.OrEmpty().Select(b=>b.ToString())));
+            Console.WriteLine(string.Join(", ", bytes.OrEmpty().Select(b=>b.ToString())));
+            CollectionAssert.AreEqual(new byte[] { 5,6,7,8 }, bytes!);
+        }
 
         static IPersistentQueueImpl PersistentQueueWithMemoryStream(MemoryStream limitedSizeStream)
         {
             var queueStub = Substitute.For<IPersistentQueueImpl>();
 
-            queueStub.WhenForAnyArgs(x => x.AcquireWriter(null, null, null))
+            queueStub.WhenForAnyArgs(x => x.AcquireWriter(default!, default!, default!))
                 .Do(c => CallActionArgument(c, limitedSizeStream));
-            return queueStub;
+            return queueStub!;
         }
 
         static void CallActionArgument(CallInfo c, MemoryStream ms)
         {
-            ((Func<Stream, long>)c.Args()[1])(ms);
+            ((Func<Stream, long>)c.Args()[1]!)(ms);
         }
     }
 }

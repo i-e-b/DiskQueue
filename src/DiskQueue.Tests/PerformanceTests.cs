@@ -126,7 +126,7 @@ namespace DiskQueue.Tests
 				{
 					for (int i = 0; i < SmallCount; i++)
 					{
-						Assert.AreEqual(itemsSizes[i], session.Dequeue().Length);
+						Assert.AreEqual(itemsSizes[i], session.Dequeue()?.Length ?? -1);
 					}
 					session.Flush();
 				}

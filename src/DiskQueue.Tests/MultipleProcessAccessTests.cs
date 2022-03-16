@@ -66,13 +66,10 @@ namespace DiskQueue.Tests
 			{
 				var data = session.Dequeue();
 				session.Flush();
-				return data;
+				return data ?? throw new Exception("Read failed");
 			}
 		}
 
-		protected string SharedStorage
-		{
-			get { return "./MultipleAccess"; }
-		}
+		protected string SharedStorage => "./MultipleAccess";
 	}
 }

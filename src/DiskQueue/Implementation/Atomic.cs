@@ -64,24 +64,21 @@ namespace DiskQueue.Implementation
 		{
 			lock (_lock)
 			{
-				if (File.Exists(path + ".old_copy"))
+				if (FileOperations.FileExists(path + ".old_copy"))
 				{
 					if (WaitDelete(path))
-						File.Move(path + ".old_copy", path);
+						FileOperations.Move(path + ".old_copy", path);
 				}
 
-				using (
-					var stream = new FileStream(path,
-					                            FileMode.OpenOrCreate,
-					                            FileAccess.Read,
-					                            FileShare.None,
-					                            0x10000,
-					                            FileOptions.SequentialScan)
-					)
-				{
-					SetPermissions.TryAllowReadWriteForAll(path);
-					action(stream);
-				}
+				using var stream = new FileStream(path,
+					FileMode.OpenOrCreate,
+					FileAccess.Read,
+					FileShare.None,
+					0x10000,
+					FileOptions.SequentialScan);
+				
+				SetPermissions.TryAllowReadWriteForAll(path);
+				action(stream);
 			}
 		}
 
@@ -98,23 +95,20 @@ namespace DiskQueue.Implementation
 				// if the old copy file exists, this means that we have
 				// a previous corrupt write, so we will not overwrite it, but 
 				// rather overwrite the current file and keep it as our backup.
-				if (File.Exists(path + ".old_copy") == false)
-					File.Move(path, path + ".old_copy");
+				if (FileOperations.FileExists(path + ".old_copy") == false)
+					FileOperations.Move(path, path + ".old_copy");
 
-				using (
-					var stream = new FileStream(path,
-					                            FileMode.Create,
-					                            FileAccess.Write,
-					                            FileShare.None,
-					                            0x10000,
-					                            FileOptions.WriteThrough | FileOptions.SequentialScan)
-					)
-				{
-					SetPermissions.TryAllowReadWriteForAll(path);
-					action(stream);
-					stream.HardFlush();
-				}
+				using var stream = new FileStream(path,
+					FileMode.Create,
+					FileAccess.Write,
+					FileShare.None,
+					0x10000,
+					FileOptions.WriteThrough | FileOptions.SequentialScan);
 				
+				SetPermissions.TryAllowReadWriteForAll(path);
+				action(stream);
+				stream.HardFlush();
+
 				WaitDelete(path + ".old_copy");
 			}
 		}
@@ -135,7 +129,12 @@ namespace DiskQueue.Implementation
 			{
 				try
 				{
-					File.Delete(s);
+					lock (_lock)
+					{
+						FileOperations.PrepareDelete(s);
+						FileOperations.Finalise();
+					}
+
 					return true;
 				}
 				catch

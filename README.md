@@ -107,6 +107,23 @@ using (var queue = new PersistentQueue(path, Constants._32Megabytes, throwOnConf
 }
 ```
 
+Global default settings
+-----------------------
+Each instance of a `PersistentQueue` has it's own settings for flush levels and corruption behaviour. You can set these individually after creating an instance,
+or globally with `PersistentQueue.DefaultSettings`. Default settings are applied to all queue instances in the same process created *after* the setting is changed.
+
+For example, if performance is more important than crash safety:
+```csharp
+PersistentQueue.DefaultSettings.ParanoidFlushing = false;
+PersistentQueue.DefaultSettings.TrimTransactionLogOnDispose = false;
+```
+
+Or if up-time is more important than detecting corruption early (often the case for embedded systems):
+```csharp
+PersistentQueue.DefaultSettings.AllowTruncatedEntries = true;
+PersistentQueue.DefaultSettings.ParanoidFlushing = true;
+```
+
 Multi-Process Usage
 -------------------
 Each `IPersistentQueue` gives exclusive access to the storage until it is disposed.

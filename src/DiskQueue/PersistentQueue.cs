@@ -149,5 +149,34 @@ namespace DiskQueue
 			get => _queue?.TrimTransactionLogOnDispose ?? true;
 			set { if (_queue != null) _queue.TrimTransactionLogOnDispose = value; }
 		}
+
+		/// <summary>
+		/// Static settings that affect all queue instances created in this process
+		/// </summary>
+		public static class DefaultSettings
+		{
+			/// <summary>
+			/// Initial setting: false
+			/// <para>Setting this to true will prevent some file-system level errors from stopping the queue.</para>
+			/// <para>Only use this if uptime is more important than correctness of data</para>
+			/// </summary>
+			public static bool AllowTruncatedEntries { get; set; }
+		
+			/// <summary>
+			/// Initial setting: true
+			/// <para>Safe, available for tests and performance.</para>
+			/// <para>If true, trim and flush waiting transactions on dispose</para>
+			/// </summary>
+			public static bool TrimTransactionLogOnDispose { get; set; } = true;
+
+			/// <summary>
+			/// Initial setting: true
+			/// <para>Setting this to false may cause unexpected data loss in some failure conditions.</para>
+			/// <para>If true, each transaction commit will flush the transaction log.</para>
+			/// <para>This is slow, but ensures the log is correct per transaction in the event of a hard termination (i.e. power failure)</para>
+			/// </summary>
+			public static bool ParanoidFlushing { get; set; } = true;
+		}
 	}
+
 }

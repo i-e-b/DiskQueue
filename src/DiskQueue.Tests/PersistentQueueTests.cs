@@ -64,7 +64,7 @@ namespace DiskQueue.Tests
         }
 
 		[Test]
-		public void Dequeing_from_empty_queue_will_return_null()
+		public void Dequeueing_from_empty_queue_will_return_null()
 		{
 			using (var queue = new PersistentQueue(Path))
 			using (var session = queue.OpenSession())
@@ -95,7 +95,6 @@ namespace DiskQueue.Tests
 				CollectionAssert.AreEqual(new byte[] { 1, 2, 3, 4 }, session.Dequeue());
 			}
 		}
-		
 
 		[Test]
 		public void Queueing_and_dequeueing_empty_data_is_handled()
@@ -192,6 +191,23 @@ namespace DiskQueue.Tests
 			using (var session = queue.OpenSession())
 			{
 				CollectionAssert.AreEqual(new byte[] { 1, 2, 3, 4 }, session.Dequeue());
+				session.Flush();
+			}
+		}
+
+		[Test]
+		public void Not_flushing_the_session_will_revert_queued_items()
+		{
+			using (var queue = new PersistentQueue(Path))
+			using (var session = queue.OpenSession())
+			{
+				session.Enqueue(new byte[] { 1, 2, 3, 4 });
+			}
+
+			using (var queue = new PersistentQueue(Path))
+			using (var session = queue.OpenSession())
+			{
+				Assert.That(session.Dequeue(), Is.Null);
 				session.Flush();
 			}
 		}

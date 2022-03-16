@@ -100,7 +100,7 @@ namespace DiskQueue.Tests
 				{
 					using (var session = queue.OpenSession())
 					{
-						Assert.AreEqual(i, session.Dequeue()[0]);
+						Assert.AreEqual(i, session.Dequeue()?[0]);
 						session.Flush();
 					}
 				}
@@ -143,13 +143,13 @@ namespace DiskQueue.Tests
 				{
 					for (byte i = 0; i < 12; i++)
 					{
-						Assert.AreEqual(i, session.Dequeue()[0]);
+						Assert.AreEqual(i, session.Dequeue()?[0]);
 						session.Flush();
 					}
 
 					for (byte i = 0; i < 3; i++)
 					{
-						Assert.AreEqual(i, session.Dequeue()[0]);
+						Assert.AreEqual(i, session.Dequeue()?[0]);
 						session.Flush();
 					}
 				}
@@ -178,7 +178,7 @@ namespace DiskQueue.Tests
 				{
 					using (var session = queue.OpenSession())
 					{
-						Assert.AreEqual(i, session.Dequeue()[0]);
+						Assert.AreEqual(i, session.Dequeue()?[0]);
 						session.Flush();
 					}
 				}

@@ -1,4 +1,5 @@
 // Copyright (c) 2005 - 2008 Ayende Rahien (ayende@ayende.com)
+// Extensions (c) 2008-2022 Iain Ballard
 // All rights reserved.
 // 
 // Redistribution and use in source and binary forms, with or without modification,
@@ -9,9 +10,9 @@
 //     * Redistributions in binary form must reproduce the above copyright notice,
 //     this list of conditions and the following disclaimer in the documentation
 //     and/or other materials provided with the distribution.
-//     * Neither the name of Ayende Rahien nor the names of its
-//     contributors may be used to endorse or promote products derived from this
-//     software without specific prior written permission.
+//     * Neither the name of Ayende Rahien nor the name of the product nor the names
+//     of its contributors may be used to endorse or promote products derived from
+//     this software without specific prior written permission.
 // 
 // THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
 // ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
@@ -49,10 +50,19 @@ namespace DiskQueue.Implementation
 	    private volatile bool _disposed;
 		private FileStream? _fileLock;
 
-		public bool TrimTransactionLogOnDispose { get; set; }
 		public int SuggestedReadBuffer { get; set; }
 		public int SuggestedWriteBuffer { get; set; }
 		public long SuggestedMaxTransactionLogSize { get; set; }
+		
+		/// <summary>
+		/// <para>Setting this to false may cause unexpected data loss in some failure conditions.</para>
+		/// <para>Defaults to true.</para>
+		/// <para>If true, each transaction commit will flush the transaction log.</para>
+		/// <para>This is slow, but ensures the log is correct per transaction in the event of a hard termination (i.e. power failure)</para>
+		/// </summary>
+		public bool ParanoidFlushing { get; set; }
+		public bool AllowTruncatedEntries { get; set; }
+		public bool TrimTransactionLogOnDispose { get; set; }
 
 	    public readonly int MaxFileSize;
 
@@ -61,8 +71,9 @@ namespace DiskQueue.Implementation
 		    lock(_configLock)
 			{
 				_disposed = true;
-				TrimTransactionLogOnDispose = true;
-				ParanoidFlushing = true;
+				TrimTransactionLogOnDispose = PersistentQueue.DefaultSettings.TrimTransactionLogOnDispose;
+				ParanoidFlushing = PersistentQueue.DefaultSettings.ParanoidFlushing;
+				AllowTruncatedEntries = PersistentQueue.DefaultSettings.AllowTruncatedEntries;
 				SuggestedMaxTransactionLogSize = Constants._32Megabytes;
 				SuggestedReadBuffer = 1024*1024;
 				SuggestedWriteBuffer = 1024*1024;
@@ -72,7 +83,7 @@ namespace DiskQueue.Implementation
 				try
 				{
 					this._path = Path.GetFullPath(path);
-					if (!Directory.Exists(this._path))
+					if (!FileOperations.DirectoryExists(this._path))
 						CreateDirectory(this._path);
 
 					LockQueue();
@@ -104,29 +115,33 @@ namespace DiskQueue.Implementation
 
 		void UnlockQueue()
 		{
-			if (string.IsNullOrWhiteSpace(_path)) return;
-			var target = Path.Combine(_path, "lock");
-			if (_fileLock != null)
+			lock (_writerLock)
 			{
-				_fileLock.Dispose();
-				File.Delete(target);
+				if (string.IsNullOrWhiteSpace(_path)) return;
+				var target = Path.Combine(_path, "lock");
+				if (_fileLock != null)
+				{
+					_fileLock.Dispose();
+					FileOperations.PrepareDelete(target);
+				}
+
+				_fileLock = null;
 			}
-			_fileLock = null;
+			FileOperations.Finalise();
 		}
 
 		void LockQueue()
 		{
-			var target = Path.Combine(_path, "lock");
-			_fileLock = new FileStream(
-				target,
-				FileMode.Create,
-				FileAccess.ReadWrite,
-				FileShare.None);
+			lock (_writerLock)
+			{
+				var target = Path.Combine(_path, "lock");
+				_fileLock = FileOperations.CreateNoShareFile(target);
+			}
 		}
 
 		void CreateDirectory(string s)
 		{
-			Directory.CreateDirectory(s);
+			FileOperations.CreateDirectory(s);
 			SetPermissions.TryAllowReadWriteForAll(s);
 		}
 
@@ -144,14 +159,6 @@ namespace DiskQueue.Implementation
 			}
 		}
 
-		/// <summary>
-		/// <para>Setting this to false may cause unexpected data loss in some failure conditions.</para>
-		/// <para>Defaults to true.</para>
-		/// <para>If true, each transaction commit will flush the transaction log.</para>
-		/// <para>This is slow, but ensures the log is correct per transaction in the event of a hard termination (i.e. power failure)</para>
-		/// </summary>
-		public bool ParanoidFlushing { get; set; }
-		public bool AllowTruncatedEntries { get; set; }
 
 		private int CurrentCountOfItemsInQueue
 		{
@@ -199,10 +206,7 @@ namespace DiskQueue.Implementation
 			}
 		}
 
-		public void AcquireWriter(
-			Stream stream,
-			Func<Stream, long> action,
-			Action<Stream> onReplaceStream)
+		public void AcquireWriter(Stream stream, Func<Stream, long> action, Action<Stream> onReplaceStream)
 		{
 			lock (_writerLock)
 			{
@@ -288,7 +292,8 @@ namespace DiskQueue.Implementation
 				
 				if (entry.Data == null)
 				{
-					ReadAhead();
+					var ok = ReadAhead();
+					if (!ok) return null;
 				}
 				_entries.RemoveFirst();
 				// we need to create a copy so we will not hold the data
@@ -304,7 +309,7 @@ namespace DiskQueue.Implementation
 		/// <summary>
 		/// Assumes that entries has at least one entry. Should be called inside a lock.
 		/// </summary>
-		private void ReadAhead()
+		private bool ReadAhead()
 		{
 			long currentBufferSize = 0;
 			
@@ -326,36 +331,52 @@ namespace DiskQueue.Implementation
 			if (lastEntry == firstEntry)
 				currentBufferSize = lastEntry.Length;
 
-			byte[] buffer = ReadEntriesFromFile(firstEntry, currentBufferSize);
+			var buffer = ReadEntriesFromFile(firstEntry, currentBufferSize);
+			if (buffer.IsFailure)
+			{
+				if (AllowTruncatedEntries) return false;
+				throw buffer.Error!;
+			}
 
 			var index = 0;
 			foreach (var entry in _entries)
 			{
 				entry.Data = new byte[entry.Length];
-				Buffer.BlockCopy(buffer, index, entry.Data, 0, entry.Length);
+				Buffer.BlockCopy(buffer.Value!, index, entry.Data, 0, entry.Length);
 				index += entry.Length;
 				if (entry == lastEntry)
 					break;
 			}
+			return true;
 		}
 
-		private byte[] ReadEntriesFromFile(Entry firstEntry, long currentBufferSize)
+		private Maybe<byte[]> ReadEntriesFromFile(Entry firstEntry, long currentBufferSize)
 		{
-			var buffer = new byte[currentBufferSize];
-		    if (firstEntry.Length < 1) return buffer;
-			using (var reader = new FileStream(GetDataPath(firstEntry.FileNumber),
-											   FileMode.OpenOrCreate, FileAccess.Read, FileShare.ReadWrite))
+			try
 			{
+				var buffer = new byte[currentBufferSize];
+				if (firstEntry.Length < 1) return buffer.Success();
+				using var reader = new FileStream(GetDataPath(firstEntry.FileNumber),
+					FileMode.OpenOrCreate, FileAccess.Read, FileShare.ReadWrite);
 				reader.Position = firstEntry.Start;
 				var totalRead = 0;
 				do
 				{
 					var bytesRead = reader.Read(buffer, totalRead, buffer.Length - totalRead);
-					if (!AllowTruncatedEntries && bytesRead == 0) throw new InvalidOperationException("End of file reached while trying to read queue item");
+					if (bytesRead == 0)
+					{
+						return Maybe<byte[]>.Fail(new InvalidOperationException("End of file reached while trying to read queue item"));
+					}
+
 					totalRead += bytesRead;
 				} while (totalRead < buffer.Length);
+
+				return buffer.Success();
 			}
-			return buffer;
+			catch (Exception ex)
+			{
+				return Maybe<byte[]>.Fail(ex);
+			}
 		}
 
 		public IPersistentQueueSession OpenSession()
@@ -480,7 +501,7 @@ namespace DiskQueue.Implementation
         /// </summary>
 	    private static Entry[] ToArray(LinkedList<Entry>? list)
         {
-            if (list == null) return new Entry[0];
+            if (list == null) return Array.Empty<Entry>();
             var outp = new List<Entry>(25);
             var cur = list.First;
             while (cur != null)
@@ -648,18 +669,18 @@ namespace DiskQueue.Implementation
 
 		private void ApplyTransactionOperations(IEnumerable<Operation> operations)
 		{
-			int[] filesToRemove;
 			lock (_entries)
 			{
-				filesToRemove = ApplyTransactionOperationsInMemory(operations);
-			}
-			foreach (var fileNumber in filesToRemove)
-			{
-				if (CurrentFileNumber == fileNumber)
-					continue;
+				var filesToRemove = ApplyTransactionOperationsInMemory(operations);
+				foreach (var fileNumber in filesToRemove)
+				{
+					if (CurrentFileNumber == fileNumber)
+						continue;
 
-				File.Delete(GetDataPath(fileNumber));
+					FileOperations.PrepareDelete(GetDataPath(fileNumber));
+				}
 			}
+			FileOperations.Finalise();
 		}
 
 		private static byte[] GenerateTransactionBuffer(ICollection<Operation> operations)

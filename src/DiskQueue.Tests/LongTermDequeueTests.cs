@@ -7,7 +7,7 @@ namespace DiskQueue.Tests
 	[TestFixture]
 	public class LongTermDequeueTests
 	{
-		IPersistentQueue _q;
+		IPersistentQueue? _q;
 
 		[SetUp]
 		public void Setup()

@@ -2,6 +2,7 @@
 using System.IO;
 using System.Security.AccessControl;
 using System.Security.Principal;
+using DiskQueue.Implementation;
 using DiskQueue.Implementation.CrossPlatform.Unix;
 
 namespace DiskQueue
@@ -29,8 +30,8 @@ namespace DiskQueue
 		/// </summary>
 		public static void AllowReadWriteForAll(string path)
 		{
-			if (Directory.Exists(path)) Directory_RWX_all(path);
-			else if (File.Exists(path)) File_RWX_all(path);
+			if (FileOperations.DirectoryExists(path)) Directory_RWX_all(path);
+			else if (FileOperations.FileExists(path)) File_RWX_all(path);
 			else throw new UnauthorizedAccessException("Can't access the path \"" + path + "\"");
 		}
 
@@ -41,8 +42,8 @@ namespace DiskQueue
 		{
 			try
 			{
-				if (Directory.Exists(path)) Directory_RWX_all(path);
-				else if (File.Exists(path)) File_RWX_all(path);
+				if (FileOperations.DirectoryExists(path)) Directory_RWX_all(path);
+				else if (FileOperations.FileExists(path)) File_RWX_all(path);
 			}
 			catch
 			{

@@ -188,7 +188,8 @@ namespace DiskQueue.Tests
 				{
 					for (int j = 0; j < 19; j++)
 					{
-						Assert.AreEqual(j, BitConverter.ToInt32(session.Dequeue(), 0));
+						var bytes = session.Dequeue() ?? throw new Exception("read failed");
+						Assert.AreEqual(j, BitConverter.ToInt32(bytes, 0));
 					}
 					Assert.IsNull(session.Dequeue());// the last transaction was corrupted
 					session.Flush();
@@ -494,7 +495,8 @@ namespace DiskQueue.Tests
 	        using (var txLog = txLogInfo.Open(FileMode.Open))
 	        {
                 var buf = new byte[(int)txLog.Length];
-	            txLog.Read(buf, 0, (int)txLog.Length);
+	            var actual = txLog.Read(buf, 0, (int)txLog.Length);
+	            Assert.AreEqual(txLog.Length, actual);
 	            txLog.Write(buf, 0, buf.Length);        // a 'good' extra session
 	            txLog.Write(buf, 0, buf.Length / 2);    // a 'bad' extra session
 	            txLog.Flush();
@@ -537,7 +539,8 @@ namespace DiskQueue.Tests
 	        using (var txLog = txLogInfo.Open(FileMode.Open))
 	        {
 	            var buf = new byte[(int)txLog.Length];
-	            txLog.Read(buf, 0, (int)txLog.Length);
+	            var actual = txLog.Read(buf, 0, (int)txLog.Length);
+	            Assert.AreEqual(txLog.Length, actual);
 	            txLog.Write(buf, 0, buf.Length - 16); // new session, but with missing end marker
 	            txLog.Write(Constants.StartTransactionSeparator, 0, 16);
 	            txLog.Flush();
