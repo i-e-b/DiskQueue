@@ -15,7 +15,7 @@ namespace DiskQueue
 	/// </summary>
 	public sealed class PersistentQueue : IPersistentQueue
 	{
-		PersistentQueueImpl? _queue;
+		private PersistentQueueImpl? _queue;
 
 		/// <summary>
 		/// Wait a maximum time to open an exclusive session.
@@ -176,6 +176,13 @@ namespace DiskQueue
 			/// <para>This is slow, but ensures the log is correct per transaction in the event of a hard termination (i.e. power failure)</para>
 			/// </summary>
 			public static bool ParanoidFlushing { get; set; } = true;
+
+			/// <summary>
+			/// Initial setting: 10000 (10 sec).
+			/// Maximum time for IO operations (including read &amp; write) to complete.
+			/// If any individual operation takes longer than this, an exception will occur.
+			/// </summary>
+			public static int FileTimeoutMilliseconds { get; set; } = 10_000;
 		}
 	}
 

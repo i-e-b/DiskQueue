@@ -71,7 +71,7 @@ namespace DiskQueue.Tests
 			}
 		}
 
-		static void Ignore() { }
+		private static void Ignore() { }
 
 		[Test]
 		public void Enqueue_and_dequeue_million_items_restart_queue()
@@ -112,10 +112,11 @@ namespace DiskQueue.Tests
 				{
 					for (int i = 0; i < SmallCount; i++)
 					{
-						var data = new byte[random.Next(1024*512, 1024*1024)];
+						var data = new byte[random.Next(1024 * 512, 1024 * 1024)];
 						itemsSizes.Add(data.Length);
 						session.Enqueue(data);
 					}
+
 					session.Flush();
 				}
 			}
@@ -128,6 +129,7 @@ namespace DiskQueue.Tests
 					{
 						Assert.AreEqual(itemsSizes[i], session.Dequeue()?.Length ?? -1);
 					}
+
 					session.Flush();
 				}
 			}

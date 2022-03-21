@@ -6,8 +6,8 @@ namespace DiskQueue.Tests
 	[TestFixture]
 	public class ParanoidFlushingTests
 	{
-		readonly byte[] _one = { 1, 2, 3, 4 };
-		readonly byte[] _two = { 5, 6, 7, 8 };
+		private readonly byte[] _one = { 1, 2, 3, 4 };
+		private readonly byte[] _two = { 5, 6, 7, 8 };
 
 		[Test]
 		public void Paranoid_flushing_still_respects_session_rollback ()

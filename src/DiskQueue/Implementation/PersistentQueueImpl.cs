@@ -27,7 +27,6 @@
 
 using System;
 using System.Collections.Generic;
-using System.IO;
 using System.Linq;
 using System.Threading;
 
@@ -48,11 +47,13 @@ namespace DiskQueue.Implementation
 	    private readonly bool _throwOnConflict;
 	    private static readonly object _configLock = new();
 	    private volatile bool _disposed;
-		private FileStream? _fileLock;
+		private object? _fileLock;
 
 		public int SuggestedReadBuffer { get; set; }
 		public int SuggestedWriteBuffer { get; set; }
 		public long SuggestedMaxTransactionLogSize { get; set; }
+		
+		private IFileDriver _file;
 		
 		/// <summary>
 		/// <para>Setting this to false may cause unexpected data loss in some failure conditions.</para>
@@ -62,6 +63,14 @@ namespace DiskQueue.Implementation
 		/// </summary>
 		public bool ParanoidFlushing { get; set; }
 		public bool AllowTruncatedEntries { get; set; }
+		public int FileTimeoutMilliseconds { get; set; }
+		
+		
+		public void SetFileDriver(IFileDriver newFileDriver)
+		{
+			_file = newFileDriver;
+		}
+
 		public bool TrimTransactionLogOnDispose { get; set; }
 
 	    public readonly int MaxFileSize;
@@ -71,31 +80,34 @@ namespace DiskQueue.Implementation
 		    lock(_configLock)
 			{
 				_disposed = true;
+                _file = new StandardFileDriver();
+                
 				TrimTransactionLogOnDispose = PersistentQueue.DefaultSettings.TrimTransactionLogOnDispose;
 				ParanoidFlushing = PersistentQueue.DefaultSettings.ParanoidFlushing;
 				AllowTruncatedEntries = PersistentQueue.DefaultSettings.AllowTruncatedEntries;
+				FileTimeoutMilliseconds = PersistentQueue.DefaultSettings.FileTimeoutMilliseconds;
 				SuggestedMaxTransactionLogSize = Constants._32Megabytes;
 				SuggestedReadBuffer = 1024*1024;
 				SuggestedWriteBuffer = 1024*1024;
-                this._throwOnConflict = throwOnConflict;
+                _throwOnConflict = throwOnConflict;
 
                 MaxFileSize = maxFileSize;
 				try
 				{
-					this._path = Path.GetFullPath(path);
-					if (!FileOperations.DirectoryExists(this._path))
-						CreateDirectory(this._path);
+					_path = _file.GetFullPath(path);
+					if (!_file.DirectoryExists(_path))
+						CreateDirectory(_path);
 
-					LockQueue();
+					var result = LockQueue();
+					if (result.IsFailure)
+					{
+						GC.SuppressFinalize(this); //avoid finalizing invalid instance
+						throw result.Error ?? new InvalidOperationException("Another instance of the queue is already in action, or directory does not exist");
+					}
 				}
 				catch (UnauthorizedAccessException)
 				{
 					throw new UnauthorizedAccessException("Directory \"" + path + "\" does not exist or is missing write permissions");
-				}
-				catch (IOException e)
-				{
-					GC.SuppressFinalize(this); //avoid finalizing invalid instance
-					throw new InvalidOperationException("Another instance of the queue is already in action, or directory does not exists", e);
 				}
 
 				try
@@ -113,35 +125,38 @@ namespace DiskQueue.Implementation
 			}
 		}
 
-		void UnlockQueue()
+		private void UnlockQueue()
 		{
 			lock (_writerLock)
 			{
 				if (string.IsNullOrWhiteSpace(_path)) return;
-				var target = Path.Combine(_path, "lock");
+				var target = _file.PathCombine(_path, "lock");
 				if (_fileLock != null)
 				{
-					_fileLock.Dispose();
-					FileOperations.PrepareDelete(target);
+					_file.ReleaseLock(_fileLock);
+					_file.PrepareDelete(target);
 				}
 
 				_fileLock = null;
 			}
-			FileOperations.Finalise();
+			_file.Finalise();
 		}
 
-		void LockQueue()
+		private Maybe<bool> LockQueue()
 		{
 			lock (_writerLock)
 			{
-				var target = Path.Combine(_path, "lock");
-				_fileLock = FileOperations.CreateNoShareFile(target);
+				var target = _file.PathCombine(_path, "lock");
+				var result = _file.CreateLockFile(target);
+				if (result.IsFailure) return result.Chain<bool>();
+				_fileLock = result.Value!;
+				return Maybe<bool>.Success(true);
 			}
 		}
 
-		void CreateDirectory(string s)
+		private void CreateDirectory(string s)
 		{
-			FileOperations.CreateDirectory(s);
+			_file.CreateDirectory(s);
 			SetPermissions.TryAllowReadWriteForAll(s);
 		}
 
@@ -173,9 +188,9 @@ namespace DiskQueue.Implementation
 
 		public long CurrentFilePosition { get; private set; }
 
-		private string TransactionLog => Path.Combine(_path, "transaction.log");
+		private string TransactionLog => _file.PathCombine(_path, "transaction.log");
 
-		private string Meta => Path.Combine(_path, "meta.state");
+		private string Meta => _file.PathCombine(_path, "meta.state");
 
 		public int CurrentFileNumber { get; private set; }
 
@@ -206,14 +221,11 @@ namespace DiskQueue.Implementation
 			}
 		}
 
-		public void AcquireWriter(Stream stream, Func<Stream, long> action, Action<Stream> onReplaceStream)
+		public void AcquireWriter(IFileStream stream, Func<IFileStream, long> action, Action<IFileStream> onReplaceStream)
 		{
 			lock (_writerLock)
 			{
-				if (stream.Position != CurrentFilePosition)
-				{
-					stream.Position = CurrentFilePosition;
-				}
+				stream.SetPosition(CurrentFilePosition);
 				CurrentFilePosition = action(stream);
 				if (CurrentFilePosition < MaxFileSize) return;
 
@@ -238,40 +250,34 @@ namespace DiskQueue.Implementation
 			lock (_transactionLogLock)
 			{
 				long txLogSize;
-				using ( var stream = WaitForTransactionLog(transactionBuffer))
+				using (var stream = WaitForTransactionLog(transactionBuffer))
 				{
-					stream.Write(transactionBuffer, 0, transactionBuffer.Length);
-					txLogSize = stream.Position;
-					stream.HardFlush();
+					txLogSize = stream.Write(transactionBuffer);
+					stream.Flush();
 				}
 
 				ApplyTransactionOperations(operations);
 				TrimTransactionLogIfNeeded(txLogSize);
 
-				Atomic.Write(Meta, stream =>
+				_file.AtomicWrite(Meta, stream =>
 				{
 					var bytes = BitConverter.GetBytes(CurrentFileNumber);
-					stream.Write(bytes, 0, bytes.Length);
+					stream.Write(bytes);
 					bytes = BitConverter.GetBytes(CurrentFilePosition);
-					stream.Write(bytes, 0, bytes.Length);
+					stream.Write(bytes);
 				});
 
 				if (ParanoidFlushing) FlushTrimmedTransactionLog();
 			}
 		}
 
-		FileStream WaitForTransactionLog(byte[] transactionBuffer)
+		private IFileStream WaitForTransactionLog(byte[] transactionBuffer)
 		{
 			for (int i = 0; i < 10; i++)
 			{
 				try
 				{
-					return new FileStream(TransactionLog,
-										  FileMode.Append,
-										  FileAccess.Write,
-										  FileShare.None,
-										  transactionBuffer.Length,
-										  FileOptions.SequentialScan | FileOptions.WriteThrough);
+					return _file.OpenTransactionLog(TransactionLog, transactionBuffer.Length);
 				}
 				catch (Exception)
 				{
@@ -356,18 +362,12 @@ namespace DiskQueue.Implementation
 			{
 				var buffer = new byte[currentBufferSize];
 				if (firstEntry.Length < 1) return buffer.Success();
-				using var reader = new FileStream(GetDataPath(firstEntry.FileNumber),
-					FileMode.OpenOrCreate, FileAccess.Read, FileShare.ReadWrite);
-				reader.Position = firstEntry.Start;
+				using var reader = _file.OpenReadStream(GetDataPath(firstEntry.FileNumber));
+				reader.MoveTo(firstEntry.Start);
 				var totalRead = 0;
 				do
 				{
 					var bytesRead = reader.Read(buffer, totalRead, buffer.Length - totalRead);
-					if (bytesRead == 0)
-					{
-						return Maybe<byte[]>.Fail(new InvalidOperationException("End of file reached while trying to read queue item"));
-					}
-
 					totalRead += bytesRead;
 				} while (totalRead < buffer.Length);
 
@@ -375,7 +375,7 @@ namespace DiskQueue.Implementation
 			}
 			catch (Exception ex)
 			{
-				return Maybe<byte[]>.Fail(ex);
+				return Maybe<byte[]>.Fail(new InvalidOperationException("End of file reached while trying to read queue item", ex));
 			}
 		}
 
@@ -404,9 +404,10 @@ namespace DiskQueue.Implementation
 		private void ReadTransactionLog()
 		{
 			var requireTxLogTrimming = false;
-			Atomic.Read(TransactionLog, stream =>
+			//Atomic.Read(TransactionLog, stream =>
+			_file.AtomicRead(TransactionLog, stream =>
 			{
-				using (var binaryReader = new BinaryReader(stream))
+				using (var binaryReader = stream.GetBinaryReader())
 				{
 					bool readingTransaction = false;
 					try
@@ -445,7 +446,7 @@ namespace DiskQueue.Implementation
 							ApplyTransactionOperations(txOps);
 						}
 					}
-					catch (EndOfStreamException)
+					catch (TruncatedStreamException)
 					{
 						// we have a truncated transaction, need to clear that
 						if (readingTransaction) requireTxLogTrimming = true;
@@ -458,7 +459,7 @@ namespace DiskQueue.Implementation
 		private void FlushTrimmedTransactionLog()
 		{
 			byte[] transactionBuffer;
-			using (var ms = new MemoryStream())
+			using (var ms = new System.IO.MemoryStream())
 			{
 				ms.Write(Constants.StartTransactionSeparator, 0, Constants.StartTransactionSeparator.Length);
 
@@ -486,13 +487,13 @@ namespace DiskQueue.Implementation
 					WriteEntryToTransactionLog(ms, entry, OperationType.Enqueue);
 				}
 				ms.Write(Constants.EndTransactionSeparator, 0, Constants.EndTransactionSeparator.Length);
-				ms.HardFlush();
+				ms.Flush();
 				transactionBuffer = ms.ToArray();
 			}
-			Atomic.Write(TransactionLog, stream =>
+			_file.AtomicWrite(TransactionLog, stream =>
 			{
 				stream.SetLength(transactionBuffer.Length);
-				stream.Write(transactionBuffer, 0, transactionBuffer.Length);
+				stream.Write(transactionBuffer);
 			});
 		}
 
@@ -512,7 +513,7 @@ namespace DiskQueue.Implementation
             return outp.ToArray();
         }
 
-	    private static void WriteEntryToTransactionLog(Stream ms, Entry entry, OperationType operationType)
+	    private static void WriteEntryToTransactionLog(System.IO.MemoryStream ms, Entry entry, OperationType operationType)
 		{
 			ms.Write(Constants.OperationSeparatorBytes, 0, Constants.OperationSeparatorBytes.Length);
 
@@ -528,7 +529,7 @@ namespace DiskQueue.Implementation
 			ms.Write(length, 0, length.Length);
 		}
 
-		private void AssertOperationSeparator(BinaryReader reader)
+		private void AssertOperationSeparator(IBinaryReader reader)
 		{
 			var separator = reader.ReadInt32();
 		    if (separator == Constants.OperationSeparator) return; // OK
@@ -590,22 +591,22 @@ namespace DiskQueue.Implementation
 	            throw new InvalidOperationException(msg);
 	        }
 
-	        throw new EndOfStreamException();   // silently truncate transactions
+	        throw new TruncatedStreamException();   // silently truncate transactions
 	    }
 
-	    private void AssertTransactionSeparator(BinaryReader binaryReader, int txCount, Marker whichSeparator, Action hasData)
+	    private void AssertTransactionSeparator(IBinaryReader binaryReader, int txCount, Marker whichSeparator, Action hasData)
 		{
 			var bytes = binaryReader.ReadBytes(16);
-			if (bytes.Length == 0) throw new EndOfStreamException();
+			if (bytes.Length == 0) throw new TruncatedStreamException();
 
 			hasData();
 			if (bytes.Length != 16)
 			{
 				// looks like we have a truncated transaction in this case, we will 
 				// say that we run into end of stream and let the log trimming to deal with this
-				if (binaryReader.BaseStream.Length == binaryReader.BaseStream.Position)
+				if (binaryReader.GetLength() == binaryReader.GetPosition())
 				{
-					throw new EndOfStreamException();
+					throw new TruncatedStreamException();
 				}
 			    ThrowIfStrict("Unexpected data in transaction log. Expected to get transaction separator but got truncated data. Tx #" + txCount);
 			}
@@ -640,16 +641,18 @@ namespace DiskQueue.Implementation
 
 		private void ReadMetaState()
 		{
-			Atomic.Read(Meta, stream =>
+			//Atomic.Read(Meta, stream =>
+			_file.AtomicRead(Meta, stream =>
 			{
-				using (var binaryReader = new BinaryReader(stream))
+				//using (var binaryReader = new BinaryReader(stream))
+				using (var binaryReader = stream.GetBinaryReader())
 				{
 					try
 					{
 						CurrentFileNumber = binaryReader.ReadInt32();
 						CurrentFilePosition = binaryReader.ReadInt64();
 					}
-					catch (EndOfStreamException)
+					catch (TruncatedStreamException)
 					{
 					}
 				}
@@ -677,16 +680,16 @@ namespace DiskQueue.Implementation
 					if (CurrentFileNumber == fileNumber)
 						continue;
 
-					FileOperations.PrepareDelete(GetDataPath(fileNumber));
+					_file.PrepareDelete(GetDataPath(fileNumber));
 				}
 			}
-			FileOperations.Finalise();
+			_file.Finalise();
 		}
 
 		private static byte[] GenerateTransactionBuffer(ICollection<Operation> operations)
 		{
 			byte[] transactionBuffer;
-			using (var ms = new MemoryStream())
+			using (var ms = new System.IO.MemoryStream())
 			{
 				ms.Write(Constants.StartTransactionSeparator, 0, Constants.StartTransactionSeparator.Length);
 
@@ -699,30 +702,21 @@ namespace DiskQueue.Implementation
 				}
 				ms.Write(Constants.EndTransactionSeparator, 0, Constants.EndTransactionSeparator.Length);
 
-				ms.HardFlush();
+				ms.Flush();
 				transactionBuffer = ms.ToArray();
 			}
 			return transactionBuffer;
 		}
 
-		private FileStream CreateWriter()
+		private IFileStream CreateWriter()
 		{
 			var dataFilePath = GetDataPath(CurrentFileNumber);
-			var stream = new FileStream(
-				dataFilePath,
-				FileMode.OpenOrCreate,
-				FileAccess.Write,
-				FileShare.ReadWrite,
-				0x10000,
-				FileOptions.Asynchronous | FileOptions.SequentialScan | FileOptions.WriteThrough);
-
-			SetPermissions.TryAllowReadWriteForAll(dataFilePath);
-			return stream;
+			return _file.OpenWriteStream(dataFilePath);
 		}
 
 		public string GetDataPath(int index)
 		{
-			return Path.Combine(_path, "data." + index);
+			return _file.PathCombine(_path, "data." + index);
 		}
 
 		private long GetOptimalTransactionLogSize()
@@ -736,12 +730,16 @@ namespace DiskQueue.Implementation
 				sizeof(int) + // 		operation separator
 				sizeof(int) + // 		file number
 				sizeof(int) + //		start
-				sizeof(int) //		length
+				sizeof(int)   //		length
 				)
 				*
 				(CurrentCountOfItemsInQueue);
 
 			return size;
 		}
+	}
+
+	internal class TruncatedStreamException : Exception
+	{
 	}
 }

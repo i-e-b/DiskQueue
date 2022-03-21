@@ -152,7 +152,7 @@ namespace DiskQueue.Tests
             CollectionAssert.AreEqual(new byte[] { 5,6,7,8 }, bytes!);
         }
 
-        static IPersistentQueueImpl PersistentQueueWithMemoryStream(MemoryStream limitedSizeStream)
+        private static IPersistentQueueImpl PersistentQueueWithMemoryStream(MemoryStream limitedSizeStream)
         {
             var queueStub = Substitute.For<IPersistentQueueImpl>();
 
@@ -161,7 +161,7 @@ namespace DiskQueue.Tests
             return queueStub!;
         }
 
-        static void CallActionArgument(CallInfo c, MemoryStream ms)
+        private static void CallActionArgument(CallInfo c, MemoryStream ms)
         {
             ((Func<Stream, long>)c.Args()[1]!)(ms);
         }

@@ -13,14 +13,29 @@ namespace DiskQueue.Implementation
     /// <summary>
     /// Represents the result of a computation that may fail
     /// </summary>
-    internal class Maybe<T>
+    public class Maybe<T>
     {
+        /// <summary>
+        /// Value of result, if successful
+        /// </summary>
         public T? Value { get; private set; }
+        /// <summary>
+        /// Error if not successful.
+        /// </summary>
         public Exception? Error { get; private set; }
         
+        /// <summary>
+        /// True if a value is set
+        /// </summary>
         public bool IsSuccess { get; private set; }
+        /// <summary>
+        /// True if no value is set
+        /// </summary>
         public bool IsFailure => !IsSuccess;
         
+        /// <summary>
+        /// Wrap a successful value
+        /// </summary>
         public static Maybe<T> Success(T value)
         {
             return new Maybe<T>{
@@ -30,6 +45,9 @@ namespace DiskQueue.Implementation
             };
         }
         
+        /// <summary>
+        /// Wrap a failure condition
+        /// </summary>
         public static Maybe<T> Fail(Exception error)
         {
             return new Maybe<T>{
@@ -39,5 +57,13 @@ namespace DiskQueue.Implementation
             };
         }
 
+        /// <summary>
+        /// Change a failure to a new Maybe&lt;T&gt; type
+        /// </summary>
+        public Maybe<T1> Chain<T1>()
+        {
+            if (IsSuccess) throw new Exception("Tried to wrap a failure case, but target was success");
+            return Maybe<T1>.Fail(Error!);
+        }
     }
 }

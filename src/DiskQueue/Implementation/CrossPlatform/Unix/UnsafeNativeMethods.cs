@@ -11,7 +11,7 @@ namespace DiskQueue.Implementation.CrossPlatform.Unix
 	{
 		[DllImport("libc", EntryPoint = "chmod", SetLastError = true,
 			CharSet = CharSet.Ansi, BestFitMapping = false, ThrowOnUnmappableChar = true)]
-		static extern int sys_chmod(string path, uint mode);
+		private static extern int sys_chmod(string path, uint mode);
 
 		/// <summary>
 		/// "Change Mode" -- sets file permissions in Linux / Unix.

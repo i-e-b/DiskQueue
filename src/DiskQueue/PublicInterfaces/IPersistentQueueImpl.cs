@@ -20,7 +20,7 @@ namespace DiskQueue
 		/// <param name="stream">Stream to write</param>
 		/// <param name="action">Writing action</param>
 		/// <param name="onReplaceStream">Continuation action if a new file is created</param>
-		void AcquireWriter(Stream stream, Func<Stream, long> action, Action<Stream> onReplaceStream);
+		void AcquireWriter(IFileStream stream, Func<IFileStream, long> action, Action<IFileStream> onReplaceStream);
 
 		/// <summary>
 		/// <para>UNSAFE. Incorrect use will result in data loss.</para>
@@ -66,5 +66,11 @@ namespace DiskQueue
 		/// <para>Only use this if uptime is more important than correctness of data</para>
 		/// </summary>
 		bool AllowTruncatedEntries { get; set; }
+
+		/// <summary>
+		/// Override the file access mechanism. For test and advanced users only.
+		/// See the source code for more details.
+		/// </summary>
+		void SetFileDriver(IFileDriver writeFailureDriver);
 	}
 }

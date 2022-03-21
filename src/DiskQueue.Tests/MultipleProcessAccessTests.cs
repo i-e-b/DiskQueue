@@ -47,7 +47,7 @@ namespace DiskQueue.Tests
 			Assert.That(received.Count, Is.EqualTo(numberOfItems), "received items");
 		}
 
-		void AddToQueue(byte[] data)
+		private void AddToQueue(byte[] data)
 		{
 			Thread.Sleep(150);
 			using (var queue = PersistentQueue.WaitFor(SharedStorage, TimeSpan.FromSeconds(30)))
@@ -58,7 +58,7 @@ namespace DiskQueue.Tests
 			}
 		}
 
-		byte[] ReadQueue()
+		private byte[] ReadQueue()
 		{
 			Thread.Sleep(150);
 			using (var queue = PersistentQueue.WaitFor(SharedStorage, TimeSpan.FromSeconds(30)))

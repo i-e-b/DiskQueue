@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.IO;
 using System.Linq;
 using System.Threading;
 
@@ -16,12 +15,12 @@ namespace DiskQueue.Implementation
 		private readonly List<Operation> _operations = new();
 		private readonly List<Exception> _pendingWritesFailures = new();
 		private readonly List<WaitHandle> _pendingWritesHandles = new();
-		private Stream _currentStream;
+		private IFileStream _currentStream;
 		private readonly int _writeBufferSize;
 		private readonly IPersistentQueueImpl _queue;
-		private readonly List<Stream> _streamsToDisposeOnFlush = new();
-		static readonly object _ctorLock = new();
-		volatile bool _disposed;
+		private readonly List<IFileStream> _streamsToDisposeOnFlush = new();
+		private static readonly object _ctorLock = new();
+		private volatile bool _disposed;
 
 		private readonly List<byte[]> _buffer = new();
 		private int _bufferSize;
@@ -33,15 +32,15 @@ namespace DiskQueue.Implementation
 		/// <para>You should use <see cref="IPersistentQueue.OpenSession"/> to get a session.</para>
 		/// <example>using (var q = PersistentQueue.WaitFor("myQueue")) using (var session = q.OpenSession()) { ... }</example>
 		/// </summary>
-		public PersistentQueueSession(IPersistentQueueImpl queue, Stream currentStream, int writeBufferSize)
+		public PersistentQueueSession(IPersistentQueueImpl queue, IFileStream currentStream, int writeBufferSize)
 		{
 			lock (_ctorLock)
 			{
-				this._queue = queue;
-				this._currentStream = currentStream;
+				_queue = queue;
+				_currentStream = currentStream;
 				if (writeBufferSize < MinSizeThatMakeAsyncWritePractical)
 					writeBufferSize = MinSizeThatMakeAsyncWritePractical;
-				this._writeBufferSize = writeBufferSize;
+				_writeBufferSize = writeBufferSize;
 				_disposed = false;
 			}
 		}
@@ -69,42 +68,36 @@ namespace DiskQueue.Implementation
 			_queue.AcquireWriter(_currentStream, stream =>
 			{
 				byte[] data = ConcatenateBufferAndAddIndividualOperations(stream);
-				stream.Write(data, 0, data.Length);
-				return stream.Position;
+				return stream.Write(data);
 			}, OnReplaceStream);
 		}
 
-		private long AsyncWriteToStream(Stream stream)
+		// TODO: re-write this with modern async/await
+		private long AsyncWriteToStream(IFileStream stream)
 		{
 			byte[] data = ConcatenateBufferAndAddIndividualOperations(stream);
 			var resetEvent = new ManualResetEvent(false);
 			_pendingWritesHandles.Add(resetEvent);
-			long positionAfterWrite = stream.Position + data.Length;
-			stream.BeginWrite(data, 0, data.Length, delegate(IAsyncResult ar)
+			long positionAfterWrite = stream.GetPosition() + data.Length;
+			try
 			{
-				try
+				positionAfterWrite = stream.Write(data);
+			}
+			catch (Exception e)
+			{
+				lock (_pendingWritesFailures)
 				{
-					stream.EndWrite(ar);
+					_pendingWritesFailures.Add(e);
 				}
-				catch (Exception e)
-				{
-					lock (_pendingWritesFailures)
-					{
-						_pendingWritesFailures.Add(e);
-					}
-				}
-				finally
-				{
-					resetEvent.Set();
-				}
-			}, null!);
+			}
+			
 			return positionAfterWrite;
 		}
 
-		private byte[] ConcatenateBufferAndAddIndividualOperations(Stream stream)
+		private byte[] ConcatenateBufferAndAddIndividualOperations(IFileStream stream)
 		{
 			var data = new byte[_bufferSize];
-			var start = (int)stream.Position;
+			var start = (int)stream.GetPosition();
 			var index = 0;
 			foreach (var bytes in _buffer)
 			{
@@ -123,7 +116,7 @@ namespace DiskQueue.Implementation
 			return data;
 		}
 
-		private void OnReplaceStream(Stream newStream)
+		private void OnReplaceStream(IFileStream newStream)
 		{
 			_streamsToDisposeOnFlush.Add(_currentStream);
 			_currentStream = newStream;
@@ -162,12 +155,12 @@ namespace DiskQueue.Implementation
 			{
 				foreach (var stream in _streamsToDisposeOnFlush)
 				{
-					stream.HardFlush();
+					stream.Flush();
 					stream.Dispose();
 				}
 				_streamsToDisposeOnFlush.Clear();
 			}
-			_currentStream.HardFlush();
+			_currentStream.Flush();
 			_queue.CommitTransaction(_operations);
 			_operations.Clear();
 		}

@@ -2,10 +2,9 @@
 using System.IO;
 using System.Security.AccessControl;
 using System.Security.Principal;
-using DiskQueue.Implementation;
 using DiskQueue.Implementation.CrossPlatform.Unix;
 
-namespace DiskQueue
+namespace DiskQueue.Implementation
 {
 	/// <summary>
 	/// File permission tools for Windows and Linux
@@ -30,8 +29,8 @@ namespace DiskQueue
 		/// </summary>
 		public static void AllowReadWriteForAll(string path)
 		{
-			if (FileOperations.DirectoryExists(path)) Directory_RWX_all(path);
-			else if (FileOperations.FileExists(path)) File_RWX_all(path);
+			if (Directory.Exists(path)) Directory_RWX_all(path);
+			else if (File.Exists(path)) File_RWX_all(path);
 			else throw new UnauthorizedAccessException("Can't access the path \"" + path + "\"");
 		}
 
@@ -42,8 +41,8 @@ namespace DiskQueue
 		{
 			try
 			{
-				if (FileOperations.DirectoryExists(path)) Directory_RWX_all(path);
-				else if (FileOperations.FileExists(path)) File_RWX_all(path);
+				if (Directory.Exists(path)) Directory_RWX_all(path);
+				else if (File.Exists(path)) File_RWX_all(path);
 			}
 			catch
 			{
@@ -51,9 +50,9 @@ namespace DiskQueue
 			}
 		}
 
-		static void Ignore() { }
+		private static void Ignore() { }
 
-		static void File_RWX_all(string path)
+		private static void File_RWX_all(string path)
 		{
 			if (RunningUnderPosix)
 			{
@@ -69,7 +68,7 @@ namespace DiskQueue
 			}
 		}
 
-		static void Directory_RWX_all(string path)
+		private static void Directory_RWX_all(string path)
 		{
 			if (RunningUnderPosix)
 			{
