@@ -22,10 +22,18 @@ namespace DiskQueue.Tests
                 }
             }
            
-            // Switch to a file system that fails on write.
-            subject.Internals.SetFileDriver(new WriteFailureDriver()); 
             
-            Assert.Inconclusive("Test not complete");
+            using (var session = subject.OpenSession())
+            {
+                // Switch to a file system that fails on write.
+                subject.Internals.SetFileDriver(new WriteFailureDriver()); 
+                
+                var result = session.Dequeue();
+                Assert.That(result, Is.Not.Null);
+                
+                session.Enqueue(new byte[] { 1, 2, 3, 4 });
+                Assert.Throws<IOException>(() => { session.Flush(); }, "should have thrown an exception when trying to write");
+            }
         }
     }
 
@@ -37,31 +45,29 @@ namespace DiskQueue.Tests
         {
             _realDriver = new StandardFileDriver();
         }
+        
         public string GetFullPath(string path)=> Path.GetFullPath(path);
         public bool DirectoryExists(string path) => Directory.Exists(path);
         public string PathCombine(string a, string b) => Path.Combine(a,b);
 
         public Maybe<LockFile> CreateLockFile(string path)
         {
-            throw new IOException("Sample error");
+            throw new IOException("Sample CreateLockFile error");
         }
 
         public void ReleaseLock(LockFile fileLock) { }
 
         public void PrepareDelete(string path)
         {
-            throw new IOException("Sample error");
+            _realDriver.PrepareDelete(path);
         }
 
         public void Finalise()
         {
-            throw new IOException("Sample error");
+            _realDriver.Finalise();
         }
 
-        public void CreateDirectory(string path)
-        {
-            throw new IOException("Sample error");
-        }
+        public void CreateDirectory(string path) { }
 
         public IFileStream OpenTransactionLog(string path, int bufferLength)
         {
@@ -75,7 +81,7 @@ namespace DiskQueue.Tests
 
         public IFileStream OpenWriteStream(string dataFilePath)
         {
-            throw new IOException("Sample error");
+            throw new IOException("Sample OpenWriteStream error");
         }
 
         public void AtomicRead(string path, Action<IFileStream> action)
@@ -85,7 +91,7 @@ namespace DiskQueue.Tests
 
         public void AtomicWrite(string path, Action<IFileStream> action)
         {
-            throw new IOException("Sample error");
+            throw new IOException("Sample AtomicWrite error");
         }
 
         public bool FileExists(string path)

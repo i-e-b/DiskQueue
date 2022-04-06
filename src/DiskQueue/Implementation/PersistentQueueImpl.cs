@@ -392,7 +392,7 @@ namespace DiskQueue.Implementation
 					{
 						if (failCount > 10)
 						{
-							return Maybe<byte[]>.Fail(new InvalidOperationException("End of file (no more bytes supplied) reached while trying to read queue item"));
+							return Maybe<byte[]>.Fail(new InvalidOperationException("End of file reached while trying to read queue item. Exceeded retry count."));
 						}
 
 						failCount++;
