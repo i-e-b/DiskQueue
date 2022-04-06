@@ -1,6 +1,9 @@
 using NUnit.Framework;
 using System;
 using System.Collections.Generic;
+using System.Text;
+using System.Threading;
+
 // ReSharper disable PossibleNullReferenceException
 // ReSharper disable AssignNullToNotNullAttribute
 
@@ -43,6 +46,107 @@ namespace DiskQueue.Tests
 					}
 					session.Flush();
 				}
+			}
+		}
+
+		[Test]
+		public void write_heavy_multi_thread_workload()
+		{
+			using (var queue = new PersistentQueue(Path)) { queue.HardDelete(false); }
+
+			var rnd = new Random();
+			var threads = new Thread[200];
+			
+			// enqueue threads
+			for (int i = 0; i < 100; i++)
+			{
+				var j = i;
+				threads[i] = new Thread(() => {
+					for (int k = 0; k < 10; k++)
+					{
+						Thread.Sleep(rnd.Next(5));
+						using (var q = PersistentQueue.WaitFor(Path, TimeSpan.FromSeconds(50)))
+						{
+							using var s = q.OpenSession();
+							s.Enqueue(Encoding.ASCII.GetBytes($"Thread {j} enqueue {k}"));
+							s.Flush();
+						}
+					}
+				}){IsBackground = true};
+				threads[i].Start();
+			}
+			
+			// dequeue single
+			Thread.Sleep(1000);
+			var count = 0;
+			while (true)
+			{
+				byte[]? bytes;
+				using (var q = PersistentQueue.WaitFor(Path, TimeSpan.FromSeconds(50)))
+				{
+					using var s = q.OpenSession();
+
+					bytes = s.Dequeue();
+					s.Flush();
+				}
+
+				if (bytes is null) break;
+				count++;
+				Console.WriteLine(Encoding.ASCII.GetString(bytes));
+			}
+			Assert.That(count, Is.EqualTo(1000), "did not receive all messages");
+		}
+		
+		
+		[Test]
+		public void read_heavy_multi_thread_workload()
+		{
+			using (var queue = new PersistentQueue(Path)) { queue.HardDelete(false); }
+			
+			// dequeue single
+			new Thread(() =>
+			{
+				for (int i = 0; i < 1000; i++)
+				{
+					using var q = PersistentQueue.WaitFor(Path, TimeSpan.FromSeconds(50));
+					using var s = q.OpenSession();
+					s.Enqueue(Encoding.ASCII.GetBytes($"Enqueue {i}"));
+					s.Flush();
+				}
+			}).Start();
+
+			Thread.Sleep(1000);
+			var rnd = new Random();
+			var threads = new Thread[200];
+			
+			// dequeue threads
+			for (int i = 0; i < 100; i++)
+			{
+				threads[i] = new Thread(() => {
+					var count = 10;
+					while (count > 0)
+					{
+						Thread.Sleep(rnd.Next(5));
+						using (var q = PersistentQueue.WaitFor(Path, TimeSpan.FromSeconds(50)))
+						{
+							using var s = q.OpenSession();
+							var data = s.Dequeue();
+							if (data != null)
+							{
+								count--;
+								Console.WriteLine(Encoding.ASCII.GetString(data));
+							}
+
+							s.Flush();
+						}
+					}
+				}){IsBackground = true};
+				threads[i].Start();
+			}
+
+			for (int e = 0; e < 100; e++)
+			{
+				if (!threads[e].Join(50_000)) Assert.Fail("reader timeout");
 			}
 		}
 
