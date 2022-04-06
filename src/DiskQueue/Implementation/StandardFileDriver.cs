@@ -24,7 +24,7 @@ namespace DiskQueue.Implementation
         {
             lock (_lock)
             {
-	            if (!FileExists(path)) return; // TODO: why should we be trying to delete non existent files?
+	            if (!FileExists(path)) return;
                 var dir = Path.GetDirectoryName(path) ?? "";
                 var file = Path.GetFileNameWithoutExtension(path);
                 var prefix = Path.GetRandomFileName();

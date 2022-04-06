@@ -1,7 +1,6 @@
 ﻿using System;
 using System.IO;
 using System.Runtime.CompilerServices;
-using System.Text;
 using System.Threading.Tasks;
 
 [assembly:InternalsVisibleTo("DiskQueue.Tests")]
@@ -45,9 +44,13 @@ namespace DiskQueue.Implementation
         
         public int ReadInt32()
         {
-            // TODO: switch to manual. BinaryReader should always be little-endian.
-            using var br = new BinaryReader(_base, Encoding.UTF8, leaveOpen:true);
-            return br.ReadInt32();
+            var d = _base.ReadByte();
+            var c = _base.ReadByte();
+            var b = _base.ReadByte();
+            var a = _base.ReadByte();
+            if (a < 0 || b < 0 || c < 0 || d < 0) throw new EndOfStreamException(); // truncated
+            
+            return a << 24 | b << 16 | c << 8 | d;
         }
 
         public byte ReadByte()
@@ -71,9 +74,9 @@ namespace DiskQueue.Implementation
         public long GetPosition() => _base.Position;
         public long ReadInt64()
         {
-            // TODO: switch to manual. BinaryReader should always be little-endian.
-            using var br = new BinaryReader(_base, Encoding.UTF8, leaveOpen:true);
-            return br.ReadInt64();
+            var b = (long)ReadInt32();
+            var a = (long)ReadInt32();
+            return a << 32 | b;
         }
     }
 }
