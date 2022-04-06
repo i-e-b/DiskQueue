@@ -24,6 +24,7 @@ namespace DiskQueue.Implementation
         {
             lock (_lock)
             {
+	            if (!FileExists(path)) return; // TODO: why should we be trying to delete non existent files?
                 var dir = Path.GetDirectoryName(path) ?? "";
                 var file = Path.GetFileNameWithoutExtension(path);
                 var prefix = Path.GetRandomFileName();
@@ -73,7 +74,7 @@ namespace DiskQueue.Implementation
         /// <summary>
         /// Test for the existence of a file
         /// </summary>
-        public static bool FileExists(string path)
+        public bool FileExists(string path)
         {
             lock (_lock)
             {
@@ -187,14 +188,20 @@ namespace DiskQueue.Implementation
 	        {
 		        try
 		        {
-			        AtomicReadInternal(path, fileStream => { 
+			        AtomicReadInternal(path, fileStream =>
+			        {
 				        var wrapper = new FileStreamWrapper(fileStream);
 				        action(wrapper);
 			        });
 			        return;
 		        }
-		        catch
+		        catch (UnrecoverableException)
 		        {
+			        throw;
+		        }
+		        catch (Exception ex)
+		        {
+			        Console.WriteLine($"Atomic read failed: {ex}");
 			        Thread.Sleep(i * 100);
 		        }
 	        }
@@ -219,7 +226,6 @@ namespace DiskQueue.Implementation
 	        }
         }
 
-
         /// <summary>
 		/// Run a read action over a file by name.
 		/// Access is optimised for sequential scanning.
@@ -227,7 +233,7 @@ namespace DiskQueue.Implementation
 		/// </summary>
 		/// <param name="path">File path to read</param>
 		/// <param name="action">Action to consume file stream. You do not need to close the stream yourself.</param>
-		public void AtomicReadInternal(string path, Action<FileStream> action)
+        private void AtomicReadInternal(string path, Action<FileStream> action)
 		{
 			lock (_lock)
 			{
@@ -255,14 +261,14 @@ namespace DiskQueue.Implementation
 		/// </summary>
 		/// <param name="path">File path to write</param>
 		/// <param name="action">Action to write into file stream. You do not need to close the stream yourself.</param>
-		public void AtomicWriteInternal(string path, Action<FileStream> action)
+		private void AtomicWriteInternal(string path, Action<FileStream> action)
 		{
 			lock (_lock)
 			{
 				// if the old copy file exists, this means that we have
 				// a previous corrupt write, so we will not overwrite it, but 
 				// rather overwrite the current file and keep it as our backup.
-				if (FileExists(path + ".old_copy") == false)
+				if (FileExists(path) && !FileExists(path + ".old_copy"))
 					Move(path, path + ".old_copy");
 
 				using var stream = new FileStream(path,
@@ -283,7 +289,7 @@ namespace DiskQueue.Implementation
 		/// <summary>
 		/// Flush a stream, checking to see if its a file -- in which case it will ask for a flush-to-disk.
 		/// </summary>
-		public static void HardFlush(Stream? stream)
+		private static void HardFlush(Stream? stream)
 		{
 			if (stream == null) return;
 			if (stream is FileStream fs) fs.Flush(true);
@@ -312,4 +318,15 @@ namespace DiskQueue.Implementation
 			return false;
 		}
     }
+
+	/// <summary>
+	/// Strict mode exceptions that can't be retried
+	/// </summary>
+	public class UnrecoverableException : Exception
+	{
+		/// <summary>
+		/// Create an unrecoverable exception with a message
+		/// </summary>
+		public UnrecoverableException(string msg):base (msg) { }
+	}
 }

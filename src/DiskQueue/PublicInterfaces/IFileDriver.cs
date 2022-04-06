@@ -114,5 +114,10 @@ namespace DiskQueue
         /// No file share is permitted.
         /// </summary>
         void AtomicWrite(string path, Action<IFileStream> action);
+
+        /// <summary>
+        /// Returns true if a readable file exists at the given path. False otherwise
+        /// </summary>
+        bool FileExists(string path);
     }
 }

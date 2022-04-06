@@ -475,6 +475,7 @@ namespace DiskQueue.Tests
 	    [Test]
 	    public void Can_restore_data_when_a_transaction_set_is_partially_truncated()
 	    {
+		    PersistentQueue.DefaultSettings.AllowTruncatedEntries = false;
 	        var txLogInfo = new FileInfo(System.IO.Path.Combine(Path, "transaction.log"));
 	        using (var queue = new PersistentQueue(Path)
 	        {
@@ -486,12 +487,12 @@ namespace DiskQueue.Tests
 	            {
 	                for (int j = 0; j < 5; j++)
 	                {
-	                    session.Enqueue(new byte[0]);
+	                    session.Enqueue(new[]{(byte)(j+1)});
 	                }
                     session.Flush();
                 }
 	        }
-            
+			
 	        using (var txLog = txLogInfo.Open(FileMode.Open))
 	        {
                 var buf = new byte[(int)txLog.Length];
@@ -506,10 +507,17 @@ namespace DiskQueue.Tests
 	        {
 	            using (var session = queue.OpenSession())
 	            {
-	                for (int j = 0; j < 10; j++)
+	                for (int j = 0; j < 5; j++)
 	                {
-	                    Assert.IsEmpty(session.Dequeue());
+	                    Assert.That(session.Dequeue(), Is.EquivalentTo(new[]{(byte)(j+1)}));
+	                    session.Flush();
 	                }
+	                for (int j = 0; j < 5; j++)
+	                {
+		                Assert.That(session.Dequeue(), Is.EquivalentTo(new[]{(byte)(j+1)}));
+		                session.Flush();
+	                }
+	                
 	                Assert.IsNull(session.Dequeue());
 	                session.Flush();
 	            }
@@ -530,7 +538,7 @@ namespace DiskQueue.Tests
 	            {
 	                for (int j = 0; j < 5; j++)
 	                {
-	                    session.Enqueue(new byte[0]);
+	                    session.Enqueue(Array.Empty<byte>());
 	                }
 	                session.Flush();
 	            }

@@ -161,7 +161,7 @@ namespace DiskQueue.Tests
 		{
 			using (var queue = new PersistentQueue(Path, 10))
 			{
-				for (byte i = 0; i < 12; i++)
+				for (byte i = 0; i < 12; i++) // 12 individual bytes, and a 10 byte file limit
 				{
 					using (var session = queue.OpenSession())
 					{

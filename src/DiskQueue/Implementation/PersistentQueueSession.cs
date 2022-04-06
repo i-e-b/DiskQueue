@@ -17,9 +17,9 @@ namespace DiskQueue.Implementation
 		private readonly List<WaitHandle> _pendingWritesHandles = new();
 		private IFileStream _currentStream;
 		private readonly int _writeBufferSize;
+		private readonly int _timeoutLimitMilliseconds;
 		private readonly IPersistentQueueImpl _queue;
 		private readonly List<IFileStream> _streamsToDisposeOnFlush = new();
-		private static readonly object _ctorLock = new();
 		private volatile bool _disposed;
 
 		private readonly List<byte[]> _buffer = new();
@@ -32,17 +32,15 @@ namespace DiskQueue.Implementation
 		/// <para>You should use <see cref="IPersistentQueue.OpenSession"/> to get a session.</para>
 		/// <example>using (var q = PersistentQueue.WaitFor("myQueue")) using (var session = q.OpenSession()) { ... }</example>
 		/// </summary>
-		public PersistentQueueSession(IPersistentQueueImpl queue, IFileStream currentStream, int writeBufferSize)
+		public PersistentQueueSession(IPersistentQueueImpl queue, IFileStream currentStream, int writeBufferSize, int timeoutLimit)
 		{
-			lock (_ctorLock)
-			{
-				_queue = queue;
-				_currentStream = currentStream;
-				if (writeBufferSize < MinSizeThatMakeAsyncWritePractical)
-					writeBufferSize = MinSizeThatMakeAsyncWritePractical;
-				_writeBufferSize = writeBufferSize;
-				_disposed = false;
-			}
+			_queue = queue;
+			_currentStream = currentStream;
+			if (writeBufferSize < MinSizeThatMakeAsyncWritePractical)
+				writeBufferSize = MinSizeThatMakeAsyncWritePractical;
+			_writeBufferSize = writeBufferSize;
+			_timeoutLimitMilliseconds = timeoutLimit;
+			_disposed = false;
 		}
 
 		/// <summary>
@@ -67,7 +65,7 @@ namespace DiskQueue.Implementation
 		{
 			_queue.AcquireWriter(_currentStream, stream =>
 			{
-				byte[] data = ConcatenateBufferAndAddIndividualOperations(stream);
+				var data = ConcatenateBufferAndAddIndividualOperations(stream);
 				return stream.Write(data);
 			}, OnReplaceStream);
 		}
@@ -75,10 +73,10 @@ namespace DiskQueue.Implementation
 		// TODO: re-write this with modern async/await
 		private long AsyncWriteToStream(IFileStream stream)
 		{
-			byte[] data = ConcatenateBufferAndAddIndividualOperations(stream);
+			var data = ConcatenateBufferAndAddIndividualOperations(stream);
 			var resetEvent = new ManualResetEvent(false);
 			_pendingWritesHandles.Add(resetEvent);
-			long positionAfterWrite = stream.GetPosition() + data.Length;
+			var positionAfterWrite = stream.GetPosition() + data.Length;
 			try
 			{
 				positionAfterWrite = stream.Write(data);
@@ -167,6 +165,7 @@ namespace DiskQueue.Implementation
 
 		private void WaitForPendingWrites()
 		{
+			var timeoutCount = 0;
 			while (_pendingWritesHandles.Count != 0)
 			{
 				var handles = _pendingWritesHandles.Take(64).ToArray();
@@ -174,13 +173,17 @@ namespace DiskQueue.Implementation
 				{
 					_pendingWritesHandles.Remove(handle);
 				}
-				WaitHandle.WaitAll(handles);
+				
+				var ok = WaitHandle.WaitAll(handles, _timeoutLimitMilliseconds);
+				if (!ok) timeoutCount++;
+				
 				foreach (var handle in handles)
 				{
 					handle.Close();
 				}
-				AssertNoPendingWritesFailures();
 			}
+			AssertNoPendingWritesFailures();
+			if (timeoutCount > 0) throw new Exception("File system async operations are timing out");
 		}
 
 		private void AssertNoPendingWritesFailures()
@@ -201,19 +204,17 @@ namespace DiskQueue.Implementation
 		/// </summary>
 		public void Dispose()
 		{
-			lock (_ctorLock)
+			if (_disposed) return;
+			_disposed = true;
+			_queue.Reinstate(_operations);
+			_operations.Clear();
+			foreach (var stream in _streamsToDisposeOnFlush)
 			{
-				if (_disposed) return;
-				_disposed = true;
-				_queue.Reinstate(_operations);
-				_operations.Clear();
-				foreach (var stream in _streamsToDisposeOnFlush)
-				{
-					stream.Dispose();
-				}
-				_currentStream.Dispose();
-				GC.SuppressFinalize(this);
+				stream.Dispose();
 			}
+
+			_currentStream.Dispose();
+			GC.SuppressFinalize(this);
 			Thread.Sleep(0);
 		}
 

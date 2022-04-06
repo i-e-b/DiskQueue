@@ -2,6 +2,8 @@ using NUnit.Framework;
 using System;
 using System.Collections.Generic;
 using System.IO;
+using DiskQueue.Implementation;
+
 // ReSharper disable PossibleNullReferenceException
 
 namespace DiskQueue.Tests
@@ -21,7 +23,7 @@ namespace DiskQueue.Tests
                 }
             });
 
-            Assert.That(invalidOperationException.Message, Is.EqualTo("Another instance of the queue is already in action, or directory does not exists"));
+            Assert.That(invalidOperationException.Message, Is.EqualTo("Another instance of the queue is already in action, or directory does not exist"));
         }
 
 		[Test]
@@ -46,6 +48,7 @@ namespace DiskQueue.Tests
         [Test]
         public void Corrupt_index_file_should_throw()
         {
+	        PersistentQueue.DefaultSettings.AllowTruncatedEntries = false;
             var buffer = new List<byte>();
 			buffer.AddRange(Guid.NewGuid().ToByteArray());
 			buffer.AddRange(Guid.NewGuid().ToByteArray());
@@ -54,7 +57,7 @@ namespace DiskQueue.Tests
 			Directory.CreateDirectory(Path);
 			File.WriteAllBytes(System.IO.Path.Combine(Path, "transaction.log"), buffer.ToArray());
 
-            var invalidOperationException = Assert.Throws<InvalidOperationException>(() =>
+            var invalidOperationException = Assert.Throws<UnrecoverableException>(() =>
             {
                 // ReSharper disable once ObjectCreationAsStatement
                 new PersistentQueue(Path);

@@ -23,11 +23,9 @@ namespace DiskQueue.Tests
 
             var pendingWriteException = Assert.Throws<PendingWriteException>(() =>
             {
-                using (var session = new PersistentQueueSession(queueStub, fileStream, 1024 * 1024))
-                {
-                    session.Enqueue(new byte[64 * 1024 * 1024 + 1]);
-                    session.Flush();
-                }
+                using var session = new PersistentQueueSession(queueStub, fileStream, 1024 * 1024, 1000);
+                session.Enqueue(new byte[64 * 1024 * 1024 + 1]);
+                session.Flush();
             });
 
             Assert.That(pendingWriteException.Message, Is.EqualTo("Error during pending writes:\r\n - Memory stream is not expandable."));
@@ -42,7 +40,7 @@ namespace DiskQueue.Tests
 
             var notSupportedException = Assert.Throws<NotSupportedException>(() =>
             {
-                using (var session = new PersistentQueueSession(queueStub, fileStream, 1024 * 1024))
+                using (var session = new PersistentQueueSession(queueStub, fileStream, 1024 * 1024, 1000))
                 {
                     session.Enqueue(new byte[64]);
                     session.Flush();
@@ -77,7 +75,7 @@ namespace DiskQueue.Tests
                 }
             });
 
-            Assert.That(invalidOperationException.Message, Is.EqualTo("End of file reached while trying to read queue item"));
+            Assert.That(invalidOperationException.Message, Is.EqualTo("End of file (no more bytes supplied) reached while trying to read queue item"));
         }
         
         [Test]

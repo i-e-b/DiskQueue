@@ -20,9 +20,8 @@ namespace DiskQueue.Implementation
 
         public long Write(byte[] bytes)
         {
-            var start = _base.Position;
             _base.Write(bytes, 0, bytes.Length);
-            return _base.Position - start;
+            return _base.Position;
         }
 
         public void Flush()

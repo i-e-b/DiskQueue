@@ -87,5 +87,10 @@ namespace DiskQueue.Tests
         {
             throw new IOException("Sample error");
         }
+
+        public bool FileExists(string path)
+        {
+            return _realDriver.FileExists(path);
+        }
     }
 }
