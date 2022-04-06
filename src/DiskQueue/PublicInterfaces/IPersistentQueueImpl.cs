@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Threading.Tasks;
 using DiskQueue.Implementation;
 
 namespace DiskQueue
@@ -19,7 +20,7 @@ namespace DiskQueue
 		/// <param name="stream">Stream to write</param>
 		/// <param name="action">Writing action</param>
 		/// <param name="onReplaceStream">Continuation action if a new file is created</param>
-		void AcquireWriter(IFileStream stream, Func<IFileStream, long> action, Action<IFileStream> onReplaceStream);
+		void AcquireWriter(IFileStream stream, Func<IFileStream, Task<long>> action, Action<IFileStream> onReplaceStream);
 
 		/// <summary>
 		/// <para>UNSAFE. Incorrect use will result in data loss.</para>

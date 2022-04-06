@@ -5,6 +5,7 @@ using NUnit.Framework;
 using System;
 using System.IO;
 using System.Linq;
+using System.Threading.Tasks;
 using DiskQueue.Tests.Helpers;
 
 // ReSharper disable PossibleNullReferenceException
@@ -163,7 +164,7 @@ namespace DiskQueue.Tests
 
         private static void CallActionArgument(CallInfo c, IFileStream ms)
         {
-            ((Func<IFileStream, long>)c.Args()[1]!)(ms);
+            ((Func<IFileStream, Task<long>>)c.Args()[1]!)(ms);
         }
     }
 }

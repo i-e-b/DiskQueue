@@ -2,6 +2,7 @@
 using System.IO;
 using System.Runtime.CompilerServices;
 using System.Text;
+using System.Threading.Tasks;
 
 [assembly:InternalsVisibleTo("DiskQueue.Tests")]
 
@@ -21,6 +22,12 @@ namespace DiskQueue.Implementation
         public long Write(byte[] bytes)
         {
             _base.Write(bytes, 0, bytes.Length);
+            return _base.Position;
+        }
+
+        public async Task<long> WriteAsync(byte[] bytes)
+        {
+            await _base.WriteAsync(bytes, 0, bytes.Length)!.ConfigureAwait(false)!;
             return _base.Position;
         }
 

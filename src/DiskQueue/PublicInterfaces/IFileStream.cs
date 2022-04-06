@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Threading.Tasks;
 
 namespace DiskQueue
 {
@@ -11,6 +12,11 @@ namespace DiskQueue
         /// Write all bytes to a stream, returning new position
         /// </summary>
         long Write(byte[] bytes);
+        
+        /// <summary>
+        /// Write all bytes to a stream, returning new position
+        /// </summary>
+        Task<long> WriteAsync(byte[] bytes);
 
         /// <summary>
         /// Flush bytes from buffers to storage

@@ -30,6 +30,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Threading;
+using System.Threading.Tasks;
 
 namespace DiskQueue.Implementation
 {
@@ -238,12 +239,12 @@ namespace DiskQueue.Implementation
 			}
 		}
 
-		public void AcquireWriter(IFileStream stream, Func<IFileStream, long> action, Action<IFileStream> onReplaceStream)
+		public void AcquireWriter(IFileStream stream, Func<IFileStream, Task<long>> action, Action<IFileStream> onReplaceStream)
 		{
 			lock (_writerLock)
 			{
 				stream.SetPosition(CurrentFilePosition);
-				CurrentFilePosition = action(stream);
+				CurrentFilePosition = Synchronise.Run(() => action(stream));
 				if (CurrentFilePosition < MaxFileSize) return;
 
 				CurrentFileNumber += 1;
@@ -775,5 +776,30 @@ namespace DiskQueue.Implementation
 
 	internal class TruncatedStreamException : Exception
 	{
+	}
+	
+	/// <summary>
+	/// Helper class to properly wait for async tasks
+	/// </summary>
+	internal static class Synchronise  
+	{
+		private static readonly TaskFactory _taskFactory = new(CancellationToken.None,
+				TaskCreationOptions.None,
+				TaskContinuationOptions.None,
+				TaskScheduler.Default);
+
+		/// <summary>
+		/// Run an async function synchronously and return the result
+		/// </summary>
+		public static TResult Run<TResult>(Func<Task<TResult>> func)
+		{
+			if (_taskFactory == null) throw new Exception("Static init failed");
+			if (func == null) throw new ArgumentNullException(nameof(func));
+
+			var rawTask = _taskFactory.StartNew(func).Unwrap();
+			if (rawTask == null) throw new Exception("Invalid task");
+
+			return rawTask.GetAwaiter().GetResult();
+		}
 	}
 }

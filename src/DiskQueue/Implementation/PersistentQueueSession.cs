@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
+using System.Threading.Tasks;
 
 namespace DiskQueue.Implementation
 {
@@ -66,12 +67,11 @@ namespace DiskQueue.Implementation
 			_queue.AcquireWriter(_currentStream, stream =>
 			{
 				var data = ConcatenateBufferAndAddIndividualOperations(stream);
-				return stream.Write(data);
+				return Task.FromResult(stream.Write(data));
 			}, OnReplaceStream);
 		}
 
-		// TODO: re-write this with modern async/await
-		private long AsyncWriteToStream(IFileStream stream)
+		private async Task<long> AsyncWriteToStream(IFileStream stream)
 		{
 			var data = ConcatenateBufferAndAddIndividualOperations(stream);
 			var resetEvent = new ManualResetEvent(false);
@@ -79,13 +79,15 @@ namespace DiskQueue.Implementation
 			var positionAfterWrite = stream.GetPosition() + data.Length;
 			try
 			{
-				positionAfterWrite = stream.Write(data);
+				positionAfterWrite = await stream.WriteAsync(data);
+				resetEvent.Set();
 			}
 			catch (Exception e)
 			{
 				lock (_pendingWritesFailures)
 				{
 					_pendingWritesFailures.Add(e);
+					resetEvent.Set();
 				}
 			}
 			
@@ -166,9 +168,10 @@ namespace DiskQueue.Implementation
 		private void WaitForPendingWrites()
 		{
 			var timeoutCount = 0;
+			var total = _pendingWritesHandles.Count;
 			while (_pendingWritesHandles.Count != 0)
 			{
-				var handles = _pendingWritesHandles.Take(64).ToArray();
+				var handles = _pendingWritesHandles.Take(32).ToArray();
 				foreach (var handle in handles)
 				{
 					_pendingWritesHandles.Remove(handle);
@@ -183,7 +186,7 @@ namespace DiskQueue.Implementation
 				}
 			}
 			AssertNoPendingWritesFailures();
-			if (timeoutCount > 0) throw new Exception("File system async operations are timing out");
+			if (timeoutCount > 0) throw new Exception($"File system async operations are timing out: {timeoutCount} of {total}");
 		}
 
 		private void AssertNoPendingWritesFailures()
