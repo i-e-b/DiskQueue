@@ -124,6 +124,21 @@ PersistentQueue.DefaultSettings.AllowTruncatedEntries = true;
 PersistentQueue.DefaultSettings.ParanoidFlushing = true;
 ```
 
+Removing or resetting queues
+----------------------------
+
+Queues create a directory and set of files for storage. You can remove all files for a queue with the `HardDelete` method.
+If you give true as the reset parameter, the directory will be written again.
+
+This WILL delete ANY AND ALL files inside the queue directory. You should not call this method in normal use.
+If you start a queue with the same path as an existing directory, this method will delete the entire directory, not just
+the queue files.
+
+```csharp
+var subject = new PersistentQueue("queue_a");
+subject.HardDelete(true); // wipe any existing data and start again
+```
+
 Multi-Process Usage
 -------------------
 Each `IPersistentQueue` gives exclusive access to the storage until it is disposed.

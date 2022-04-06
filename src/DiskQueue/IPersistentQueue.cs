@@ -31,5 +31,14 @@ namespace DiskQueue
 		/// (i.e. this is NOT the maximum size of the queue)
 		/// </summary>
 		int MaxFileSize { get; }
+
+		/// <summary>
+		/// WARNING: Dangerous!
+		/// Attempt to delete the queue, all its data, and all support files.
+		/// This is not thread safe, multi-process safe, or safe in any other way.
+		///<para></para>
+		/// If reset is true, the queue's directory and lock file will be restored, and the queue can continue to be used.
+		/// </summary>
+		void HardDelete(bool reset);
 	}
 }

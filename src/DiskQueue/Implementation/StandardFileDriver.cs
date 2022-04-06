@@ -82,6 +82,15 @@ namespace DiskQueue.Implementation
             }
         }
 
+        public void DeleteRecursive(string path)
+        {
+	        if (Path.GetPathRoot(path) == Path.GetFullPath(path)) throw new Exception("Request to delete root directory rejected");
+	        if (string.IsNullOrWhiteSpace(Path.GetDirectoryName(path)!)) throw new Exception("Request to delete root directory rejected");
+	        if (File.Exists(path)) throw new Exception("Tried to recursively delete a single file.");
+	        
+	        Directory.Delete(path, true);
+        }
+
         /// <summary>
         /// Test for the existence of a directory
         /// </summary>

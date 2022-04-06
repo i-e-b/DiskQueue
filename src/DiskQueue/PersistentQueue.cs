@@ -130,6 +130,16 @@ namespace DiskQueue
 		public int MaxFileSize => _queue?.MaxFileSize ?? 0;
 
 		/// <summary>
+		/// WARNING: 
+		/// Attempt to delete the queue, all its data, and all support files.
+		/// </summary>
+		public void HardDelete(bool reset)
+		{
+			if (_queue is null) throw new Exception("This queue has been disposed");
+			_queue.HardDelete(reset);
+		}
+
+		/// <summary>
 		/// If the transaction log is near this size, it will be flushed and trimmed.
 		/// If you set Internals.ParanoidFlushing, this value is ignored.
 		/// </summary>

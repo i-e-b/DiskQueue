@@ -12,6 +12,7 @@ namespace DiskQueue.Tests
         public void enqueue_fails_if_disk_is_full_but_dequeue_still_works ()
         {
             IPersistentQueue subject = new PersistentQueue("queue_a");
+            subject.HardDelete(true);
 
             using (var session = subject.OpenSession())
             {
@@ -21,18 +22,20 @@ namespace DiskQueue.Tests
                     session.Flush();
                 }
             }
-           
             
             using (var session = subject.OpenSession())
             {
                 // Switch to a file system that fails on write.
-                subject.Internals.SetFileDriver(new WriteFailureDriver()); 
-                
-                var result = session.Dequeue();
-                Assert.That(result, Is.Not.Null);
-                
-                session.Enqueue(new byte[] { 1, 2, 3, 4 });
-                Assert.Throws<IOException>(() => { session.Flush(); }, "should have thrown an exception when trying to write");
+                subject.Internals.SetFileDriver(new WriteFailureDriver());
+
+                for (int i = 0; i < 3; i++)
+                {
+                    var result = session.Dequeue();
+                    Assert.That(result, Is.Not.Null);
+
+                    session.Enqueue(new byte[] { 1, 2, 3, 4 });
+                    Assert.Throws<IOException>(() => { session.Flush(); }, "should have thrown an exception when trying to write");
+                }
             }
         }
     }
@@ -98,5 +101,7 @@ namespace DiskQueue.Tests
         {
             return _realDriver.FileExists(path);
         }
+
+        public void DeleteRecursive(string path) { }
     }
 }

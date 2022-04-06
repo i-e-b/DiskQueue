@@ -97,27 +97,42 @@ namespace DiskQueue.Implementation
 				try
 				{
 					_path = _file.GetFullPath(path);
-					if (!_file.DirectoryExists(_path))
-						CreateDirectory(_path);
-
-					var result = LockQueue();
-					if (result.IsFailure)
-					{
-						GC.SuppressFinalize(this); //avoid finalizing invalid instance
-						throw new InvalidOperationException("Another instance of the queue is already in action, or directory does not exist", result.Error ?? new Exception());
-					}
 				}
 				catch (UnauthorizedAccessException)
 				{
 					throw new UnauthorizedAccessException("Directory \"" + path + "\" does not exist or is missing write permissions");
 				}
 
-				if (_file.FileExists(Meta) || _file.FileExists(TransactionLog))
-				{
-					ReadExistingQueue();
-				}
+				LockAndReadQueue();
 
 				_disposed = false;
+			}
+		}
+
+		private void LockAndReadQueue()
+		{
+			try
+			{
+				if (!_file.DirectoryExists(_path))
+					CreateDirectory(_path);
+				
+				var result = LockQueue();
+				if (result.IsFailure)
+				{
+					GC.SuppressFinalize(this); //avoid finalizing invalid instance
+					throw new InvalidOperationException("Another instance of the queue is already in action, or directory does not exist", result.Error ?? new Exception());
+				}
+			}
+			catch (UnauthorizedAccessException)
+			{
+				throw new UnauthorizedAccessException("Directory \"" + _path + "\" does not exist or is missing write permissions");
+			}
+
+			CurrentFileNumber = 0;
+			CurrentFilePosition = 0;
+			if (_file.FileExists(Meta) || _file.FileExists(TransactionLog))
+			{
+				ReadExistingQueue();
 			}
 		}
 
@@ -497,7 +512,7 @@ namespace DiskQueue.Implementation
 		private void FlushTrimmedTransactionLog()
 		{
 			byte[] transactionBuffer;
-			using (var ms = new System.IO.MemoryStream())
+			using (var ms = new MemoryStream())
 			{
 				ms.Write(Constants.StartTransactionSeparator, 0, Constants.StartTransactionSeparator.Length);
 
@@ -551,7 +566,7 @@ namespace DiskQueue.Implementation
             return outp.ToArray();
         }
 
-	    private static void WriteEntryToTransactionLog(System.IO.MemoryStream ms, Entry entry, OperationType operationType)
+	    private static void WriteEntryToTransactionLog(Stream ms, Entry entry, OperationType operationType)
 		{
 			ms.Write(Constants.OperationSeparatorBytes, 0, Constants.OperationSeparatorBytes.Length);
 
@@ -676,7 +691,6 @@ namespace DiskQueue.Implementation
 		    }
 		}
 
-
 		private void ReadMetaState()
 		{
 			_file.AtomicRead(Meta, stream =>
@@ -693,7 +707,6 @@ namespace DiskQueue.Implementation
 				}
 			});
 		}
-
 
 		private void TrimTransactionLogIfNeeded(long txLogSize)
 		{
@@ -723,23 +736,20 @@ namespace DiskQueue.Implementation
 
 		private static byte[] GenerateTransactionBuffer(ICollection<Operation> operations)
 		{
-			byte[] transactionBuffer;
-			using (var ms = new System.IO.MemoryStream())
+			using var ms = new MemoryStream();
+			ms.Write(Constants.StartTransactionSeparator, 0, Constants.StartTransactionSeparator.Length);
+
+			var count = BitConverter.GetBytes(operations.Count);
+			ms.Write(count, 0, count.Length);
+
+			foreach (var operation in operations)
 			{
-				ms.Write(Constants.StartTransactionSeparator, 0, Constants.StartTransactionSeparator.Length);
-
-				var count = BitConverter.GetBytes(operations.Count);
-				ms.Write(count, 0, count.Length);
-
-				foreach (var operation in operations)
-				{
-					WriteEntryToTransactionLog(ms, new Entry(operation), operation.Type);
-				}
-				ms.Write(Constants.EndTransactionSeparator, 0, Constants.EndTransactionSeparator.Length);
-
-				ms.Flush();
-				transactionBuffer = ms.ToArray();
+				WriteEntryToTransactionLog(ms, new Entry(operation), operation.Type);
 			}
+			ms.Write(Constants.EndTransactionSeparator, 0, Constants.EndTransactionSeparator.Length);
+
+			ms.Flush();
+			var transactionBuffer = ms.ToArray();
 			return transactionBuffer;
 		}
 
@@ -749,7 +759,7 @@ namespace DiskQueue.Implementation
 			return _file.OpenWriteStream(dataFilePath);
 		}
 
-		public string GetDataPath(int index)
+		private string GetDataPath(int index)
 		{
 			return _file.PathCombine(_path, "data." + index);
 		}
@@ -771,6 +781,17 @@ namespace DiskQueue.Implementation
 				(CurrentCountOfItemsInQueue);
 
 			return size;
+		}
+
+		public void HardDelete(bool reset)
+		{
+			lock (_writerLock)
+			{
+				UnlockQueue();
+				_file.DeleteRecursive(_path);
+				if (reset) LockAndReadQueue();
+				else Dispose();
+			}
 		}
 	}
 

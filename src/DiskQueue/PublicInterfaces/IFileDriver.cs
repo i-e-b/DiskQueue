@@ -119,5 +119,10 @@ namespace DiskQueue
         /// Returns true if a readable file exists at the given path. False otherwise
         /// </summary>
         bool FileExists(string path);
+
+        /// <summary>
+        /// Try to delete all files and directories in a sub-path
+        /// </summary>
+        void DeleteRecursive(string path);
     }
 }
