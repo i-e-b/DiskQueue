@@ -5,19 +5,16 @@ using System.Threading;
 
 namespace DiskQueue.Implementation
 {
-    /// <summary>
+	/// <summary>
     /// A wrapper around System.IO.File to help with
     /// heavily multi-threaded and multi-process workflows
     /// </summary>
     internal class StandardFileDriver: IFileDriver
     {
+	    public const int RetryLimit = 10;
+	    
         private static readonly object _lock = new();
         private static readonly Queue<string> _waitingDeletes = new();
-
-        public void ReleaseLock(object fileLock)
-        {
-	        throw new NotImplementedException();
-        }
 
         /// <summary>
         /// Moves a file to a temporary name and adds it to an internal
@@ -32,9 +29,11 @@ namespace DiskQueue.Implementation
                 var prefix = Path.GetRandomFileName();
                 
                 var deletePath = Path.Combine(dir, $"{file}_dc_{prefix}");
-                
-                File.Move(path, deletePath);
-                _waitingDeletes.Enqueue(deletePath);
+
+                if (Move(path, deletePath))
+                {
+	                _waitingDeletes.Enqueue(deletePath);
+                }
             }
         }
 
@@ -58,14 +57,16 @@ namespace DiskQueue.Implementation
         /// <summary>
         /// Create and open a new file with no sharing between processes.
         /// </summary>
-        public FileStream CreateNoShareFile(string path)
+        public LockFile CreateNoShareFile(string path)
         {
             lock (_lock)
             {
-                return new FileStream(path,
+                var lockStream = new FileStream(path,
                     FileMode.Create,
                     FileAccess.ReadWrite,
                     FileShare.None);
+                
+                return new LockFile(lockStream, path);
             }
         }
 
@@ -91,14 +92,26 @@ namespace DiskQueue.Implementation
             }
         }
 
-        public string PathCombine(string a, string b)
-        {
-	        throw new NotImplementedException();
-        }
+        public string PathCombine(string a, string b) => Path.Combine(a,b);
 
-        public Maybe<object> CreateLockFile(string path)
+        public Maybe<LockFile> CreateLockFile(string path)
         {
-	        throw new NotImplementedException();
+	        try
+	        {
+		        return CreateNoShareFile(path).Success();
+	        }
+	        catch (Exception ex)
+	        {
+		        return Maybe<LockFile>.Fail(ex);
+	        }
+        }
+        
+        public void ReleaseLock(LockFile fileLock)
+        {
+	        lock (_lock)
+	        {
+		        fileLock.Dispose();
+	        }
         }
 
         /// <summary>
@@ -115,12 +128,24 @@ namespace DiskQueue.Implementation
         /// <summary>
         /// Rename a file, including its path
         /// </summary>
-        public static void Move(string oldPath, string newPath)
+        public static bool Move(string oldPath, string newPath)
         {
             lock (_lock)
             {
-                File.Move(oldPath, newPath);
+	            for (int i = 0; i < RetryLimit; i++)
+	            {
+		            try
+		            {
+			            File.Move(oldPath, newPath);
+			            return true;
+		            }
+		            catch
+		            {
+			            Thread.Sleep(i * 100);
+		            }
+	            }
             }
+            return false;
         }
 
         public string GetFullPath(string path) => Path.GetFullPath(path);
@@ -158,12 +183,40 @@ namespace DiskQueue.Implementation
 
         public void AtomicRead(string path, Action<IFileStream> action)
         {
-	        throw new NotImplementedException();
+	        for (int i = 0; i < RetryLimit; i++)
+	        {
+		        try
+		        {
+			        AtomicReadInternal(path, fileStream => { 
+				        var wrapper = new FileStreamWrapper(fileStream);
+				        action(wrapper);
+			        });
+			        return;
+		        }
+		        catch
+		        {
+			        Thread.Sleep(i * 100);
+		        }
+	        }
         }
 
         public void AtomicWrite(string path, Action<IFileStream> action)
         {
-	        throw new NotImplementedException();
+	        for (int i = 0; i < RetryLimit; i++)
+	        {
+		        try
+		        {
+			        AtomicWriteInternal(path, fileStream => { 
+				        var wrapper = new FileStreamWrapper(fileStream);
+				        action(wrapper);
+			        });
+			        return;
+		        }
+		        catch
+		        {
+			        Thread.Sleep(i * 100);
+		        }
+	        }
         }
 
 
@@ -174,7 +227,7 @@ namespace DiskQueue.Implementation
 		/// </summary>
 		/// <param name="path">File path to read</param>
 		/// <param name="action">Action to consume file stream. You do not need to close the stream yourself.</param>
-		public void AtomicReadInternal(string path, Action<Stream> action)
+		public void AtomicReadInternal(string path, Action<FileStream> action)
 		{
 			lock (_lock)
 			{
@@ -202,7 +255,7 @@ namespace DiskQueue.Implementation
 		/// </summary>
 		/// <param name="path">File path to write</param>
 		/// <param name="action">Action to write into file stream. You do not need to close the stream yourself.</param>
-		public void AtomicWriteInternal(string path, Action<Stream> action)
+		public void AtomicWriteInternal(string path, Action<FileStream> action)
 		{
 			lock (_lock)
 			{
@@ -239,7 +292,7 @@ namespace DiskQueue.Implementation
 
 		private bool WaitDelete(string s)
 		{
-			for (int i = 0; i < 5; i++)
+			for (int i = 0; i < RetryLimit; i++)
 			{
 				try
 				{

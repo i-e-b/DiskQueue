@@ -47,7 +47,7 @@ namespace DiskQueue.Implementation
 	    private readonly bool _throwOnConflict;
 	    private static readonly object _configLock = new();
 	    private volatile bool _disposed;
-		private object? _fileLock;
+		private LockFile? _fileLock;
 
 		public int SuggestedReadBuffer { get; set; }
 		public int SuggestedWriteBuffer { get; set; }
@@ -279,8 +279,9 @@ namespace DiskQueue.Implementation
 				{
 					return _file.OpenTransactionLog(TransactionLog, transactionBuffer.Length);
 				}
-				catch (Exception)
+				catch (Exception ex)
 				{
+					Console.WriteLine(ex.ToString());
 					Thread.Sleep(250);
 				}
 			}
@@ -365,9 +366,25 @@ namespace DiskQueue.Implementation
 				using var reader = _file.OpenReadStream(GetDataPath(firstEntry.FileNumber));
 				reader.MoveTo(firstEntry.Start);
 				var totalRead = 0;
+				var failCount = 0;
 				do
 				{
 					var bytesRead = reader.Read(buffer, totalRead, buffer.Length - totalRead);
+					if (bytesRead < 1)
+					{
+						if (failCount > 10)
+						{
+							return Maybe<byte[]>.Fail(new InvalidOperationException("End of file (no more bytes supplied) reached while trying to read queue item"));
+						}
+
+						failCount++;
+						Thread.Sleep(100);
+					}
+					else
+					{
+						failCount = 0;
+					}
+
 					totalRead += bytesRead;
 				} while (totalRead < buffer.Length);
 

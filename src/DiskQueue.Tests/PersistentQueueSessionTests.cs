@@ -18,11 +18,12 @@ namespace DiskQueue.Tests
         public void Errors_raised_during_pending_write_will_be_thrown_on_flush()
         {
             var limitedSizeStream = new MemoryStream(new byte[4]);
-            var queueStub = PersistentQueueWithMemoryStream(limitedSizeStream);
+            var fileStream = new FileStreamWrapper(limitedSizeStream);
+            var queueStub = PersistentQueueWithMemoryStream(fileStream);
 
             var pendingWriteException = Assert.Throws<PendingWriteException>(() =>
             {
-                using (var session = new PersistentQueueSession(queueStub, limitedSizeStream, 1024 * 1024))
+                using (var session = new PersistentQueueSession(queueStub, fileStream, 1024 * 1024))
                 {
                     session.Enqueue(new byte[64 * 1024 * 1024 + 1]);
                     session.Flush();
@@ -36,11 +37,12 @@ namespace DiskQueue.Tests
         public void Errors_raised_during_flush_write_will_be_thrown_as_is()
         {
             var limitedSizeStream = new MemoryStream(new byte[4]);
-            var queueStub = PersistentQueueWithMemoryStream(limitedSizeStream);
+            var fileStream = new FileStreamWrapper(limitedSizeStream);
+            var queueStub = PersistentQueueWithMemoryStream(fileStream);
 
             var notSupportedException = Assert.Throws<NotSupportedException>(() =>
             {
-                using (var session = new PersistentQueueSession(queueStub, limitedSizeStream, 1024 * 1024))
+                using (var session = new PersistentQueueSession(queueStub, fileStream, 1024 * 1024))
                 {
                     session.Enqueue(new byte[64]);
                     session.Flush();
@@ -152,7 +154,7 @@ namespace DiskQueue.Tests
             CollectionAssert.AreEqual(new byte[] { 5,6,7,8 }, bytes!);
         }
 
-        private static IPersistentQueueImpl PersistentQueueWithMemoryStream(MemoryStream limitedSizeStream)
+        private static IPersistentQueueImpl PersistentQueueWithMemoryStream(IFileStream limitedSizeStream)
         {
             var queueStub = Substitute.For<IPersistentQueueImpl>();
 
@@ -161,9 +163,9 @@ namespace DiskQueue.Tests
             return queueStub!;
         }
 
-        private static void CallActionArgument(CallInfo c, MemoryStream ms)
+        private static void CallActionArgument(CallInfo c, IFileStream ms)
         {
-            ((Func<Stream, long>)c.Args()[1]!)(ms);
+            ((Func<IFileStream, long>)c.Args()[1]!)(ms);
         }
     }
 }
