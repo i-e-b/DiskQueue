@@ -29,7 +29,7 @@ namespace DiskQueue.Tests
                 session.Flush();
             });
 
-            Assert.That(pendingWriteException.Message, Is.EqualTo("Error during pending writes:\r\n - Memory stream is not expandable."));
+            Assert.That(pendingWriteException.Message, Is.EqualTo("Error during pending writes:" + Environment.NewLine + " - Memory stream is not expandable."));
         }
 
         [Test]
