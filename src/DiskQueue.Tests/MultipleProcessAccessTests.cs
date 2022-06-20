@@ -41,7 +41,6 @@ namespace DiskQueue.Tests
 
 			if (!ok)
 			{
-				t2.Abort();
 				Assert.Fail("Did not receive all data in time");
 			}
 			Assert.That(received.Count, Is.EqualTo(numberOfItems), "received items");

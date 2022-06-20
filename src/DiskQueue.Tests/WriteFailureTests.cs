@@ -11,7 +11,7 @@ namespace DiskQueue.Tests
         [Test]
         public void enqueue_fails_if_disk_is_full_but_dequeue_still_works ()
         {
-            IPersistentQueue subject = new PersistentQueue("queue_a");
+            IPersistentQueue subject = new PersistentQueue("queue_wf");
             subject.HardDelete(true);
 
             using (var session = subject.OpenSession())

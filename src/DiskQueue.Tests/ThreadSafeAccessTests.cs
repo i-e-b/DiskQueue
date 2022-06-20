@@ -19,7 +19,7 @@ namespace DiskQueue.Tests
 			var rnd = new Random();
 
 
-			IPersistentQueue subject = new PersistentQueue("queue_a");
+			IPersistentQueue subject = new PersistentQueue("queue_ta");
 			var t1 = new Thread(() =>
 			{
 				for (int i = 0; i < target; i++)
@@ -72,7 +72,7 @@ namespace DiskQueue.Tests
 			{
 				for (int i = 0; i < target; i++)
 				{
-					using (var subject = PersistentQueue.WaitFor("queue_b", TimeSpan.FromSeconds(10)))
+					using (var subject = PersistentQueue.WaitFor("queue_tb", TimeSpan.FromSeconds(10)))
 					{
 						using (var session = subject.OpenSession())
 						{
@@ -89,7 +89,7 @@ namespace DiskQueue.Tests
 			var t2 = new Thread(()=> {
 				for (int i = 0; i < target; i++)
 				{
-					using (var subject = PersistentQueue.WaitFor("queue_b", TimeSpan.FromSeconds(10)))
+					using (var subject = PersistentQueue.WaitFor("queue_tb", TimeSpan.FromSeconds(10)))
 					{
 						using (var session = subject.OpenSession())
 						{

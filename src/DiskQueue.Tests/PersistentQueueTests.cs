@@ -8,7 +8,7 @@ using DiskQueue.Implementation;
 
 namespace DiskQueue.Tests
 {
-	[TestFixture]
+	[TestFixture, SingleThreaded]
 	public class PersistentQueueTests : PersistentQueueTestsBase
 	{
 		[Test]

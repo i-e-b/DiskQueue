@@ -9,7 +9,7 @@ using System.Threading;
 
 namespace DiskQueue.Tests
 {
-	[TestFixture, Explicit]
+	[TestFixture, Explicit, SingleThreaded]
 	public class PerformanceTests : PersistentQueueTestsBase
 	{
 		[Test, Description(

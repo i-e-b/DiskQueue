@@ -14,7 +14,10 @@ namespace DiskQueue.Tests
 		{
 			using (var queue = new PersistentQueue("./queue"))
 			{
-				queue.Internals.ParanoidFlushing = true;
+				// Clean up leftover data from previous failed test runs
+                queue.HardDelete(true);
+
+                queue.Internals.ParanoidFlushing = true;
 
 				// Flush only `_one`
 				using (var s1 = queue.OpenSession())

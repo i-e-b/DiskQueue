@@ -3,14 +3,15 @@ using NUnit.Framework;
 
 namespace DiskQueue.Tests
 {
-    [TestFixture]
+    [TestFixture, SingleThreaded]
 	public class CountOfItemsPersistentQueueTests : PersistentQueueTestsBase
 	{
-		[Test]
+        [Test]
 		public void Can_get_count_from_queue()
 		{
 			using (var queue = new PersistentQueue(Path))
 			{
+				queue.HardDelete(true);
 				Assert.AreEqual(0, queue.EstimatedCountOfItemsInQueue);
 			}
 		}
@@ -20,6 +21,7 @@ namespace DiskQueue.Tests
 		{
 			using (var queue = new PersistentQueue(Path))
 			{
+                queue.HardDelete(true);
 				for (byte i = 0; i < 5; i++)
 				{
 					using (var session = queue.OpenSession())
@@ -38,6 +40,7 @@ namespace DiskQueue.Tests
 		{
 			using (var queue = new PersistentQueue(Path))
 			{
+                queue.HardDelete(true);
 				for (byte i = 0; i < 5; i++)
 				{
 					using (var session = queue.OpenSession())

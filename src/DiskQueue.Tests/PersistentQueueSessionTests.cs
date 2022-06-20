@@ -12,7 +12,7 @@ using DiskQueue.Tests.Helpers;
 
 namespace DiskQueue.Tests
 {
-    [TestFixture]
+    [TestFixture, SingleThreaded]
     public class PersistentQueueSessionTests : PersistentQueueTestsBase
     {
         [Test]
