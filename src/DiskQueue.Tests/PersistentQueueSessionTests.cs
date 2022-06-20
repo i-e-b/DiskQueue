@@ -65,7 +65,7 @@ namespace DiskQueue.Tests
                 fs.SetLength(2);//corrupt the file
             }
 
-            var invalidOperationException = Assert.Throws<InvalidOperationException>(() =>
+            Assert.Throws<InvalidOperationException>(() =>
             {
                 using (var queue = new PersistentQueue(Path))
                 {
@@ -75,8 +75,6 @@ namespace DiskQueue.Tests
                     }
                 }
             });
-
-            Assert.That(invalidOperationException.Message, Is.EqualTo("End of file (no more bytes supplied) reached while trying to read queue item"));
         }
         
         [Test]
