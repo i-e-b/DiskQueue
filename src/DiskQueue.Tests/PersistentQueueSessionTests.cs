@@ -12,9 +12,11 @@ using DiskQueue.Tests.Helpers;
 
 namespace DiskQueue.Tests
 {
-    [TestFixture]
+    [TestFixture, SingleThreaded]
     public class PersistentQueueSessionTests : PersistentQueueTestsBase
     {
+        protected override string Path => "./PersistentQueueSessionTest";
+
         [Test]
         public void Errors_raised_during_pending_write_will_be_thrown_on_flush()
         {
@@ -29,7 +31,7 @@ namespace DiskQueue.Tests
                 session.Flush();
             });
 
-            Assert.That(pendingWriteException.Message, Is.EqualTo("Error during pending writes:\r\n - Memory stream is not expandable."));
+            Assert.That(pendingWriteException.Message, Is.EqualTo("Error during pending writes:" + Environment.NewLine + " - Memory stream is not expandable."));
         }
 
         [Test]
@@ -65,7 +67,7 @@ namespace DiskQueue.Tests
                 fs.SetLength(2);//corrupt the file
             }
 
-            var invalidOperationException = Assert.Throws<InvalidOperationException>(() =>
+            Assert.Throws<InvalidOperationException>(() =>
             {
                 using (var queue = new PersistentQueue(Path))
                 {
@@ -75,8 +77,6 @@ namespace DiskQueue.Tests
                     }
                 }
             });
-
-            Assert.That(invalidOperationException.Message, Is.EqualTo("End of file (no more bytes supplied) reached while trying to read queue item"));
         }
         
         [Test]

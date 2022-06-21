@@ -3,10 +3,12 @@ using NUnit.Framework;
 
 namespace DiskQueue.Tests
 {
-    [TestFixture]
+    [TestFixture, SingleThreaded]
 	public class CountOfItemsPersistentQueueTests : PersistentQueueTestsBase
 	{
-		[Test]
+		protected override string Path => "./CountOfItemsTests";
+
+        [Test]
 		public void Can_get_count_from_queue()
 		{
 			using (var queue = new PersistentQueue(Path))

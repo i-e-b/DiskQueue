@@ -3,15 +3,17 @@ using System.IO;
 
 namespace DiskQueue.Tests
 {
-	[TestFixture]
+	[TestFixture, SingleThreaded]
 	public class MultiFileQueueTests : PersistentQueueTestsBase
 	{
-		[Test]
+		protected override string Path => "./MultiFileQueue";
+
+        [Test]
 		public void Can_limit_amount_of_items_in_queue_file()
 		{
 			using (IPersistentQueue queue = new PersistentQueue(Path, 10))
 			{
-				Assert.AreEqual(10, queue.MaxFileSize);
+                Assert.AreEqual(10, queue.MaxFileSize);
 			}
 		}
 
@@ -37,7 +39,7 @@ namespace DiskQueue.Tests
 		{
 			using (var queue = new PersistentQueue(Path, 10))
 			{
-				for (byte i = 0; i < 11; i++)
+                for (byte i = 0; i < 11; i++)
 				{
 					using (var session = queue.OpenSession())
 					{
@@ -54,7 +56,7 @@ namespace DiskQueue.Tests
 		{
 			using (var queue = new PersistentQueue(Path, 10))
 			{
-				for (byte i = 0; i < 11; i++)
+                for (byte i = 0; i < 11; i++)
 				{
 					using (var session = queue.OpenSession())
 					{
@@ -83,7 +85,7 @@ namespace DiskQueue.Tests
 		{
 			using (var queue = new PersistentQueue(Path, 10))
 			{
-				for (byte i = 0; i < 12; i++)
+                for (byte i = 0; i < 12; i++)
 				{
 					using (var session = queue.OpenSession())
 					{
@@ -112,7 +114,7 @@ namespace DiskQueue.Tests
 		{
 			using (var queue = new PersistentQueue(Path, 10))
 			{
-				for (byte i = 0; i < 12; i++)
+                for (byte i = 0; i < 12; i++)
 				{
 					using (var session = queue.OpenSession())
 					{
@@ -161,7 +163,7 @@ namespace DiskQueue.Tests
 		{
 			using (var queue = new PersistentQueue(Path, 10))
 			{
-				for (byte i = 0; i < 12; i++) // 12 individual bytes, and a 10 byte file limit
+                for (byte i = 0; i < 12; i++) // 12 individual bytes, and a 10 byte file limit
 				{
 					using (var session = queue.OpenSession())
 					{

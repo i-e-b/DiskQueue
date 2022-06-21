@@ -9,9 +9,11 @@ using System.Threading;
 
 namespace DiskQueue.Tests
 {
-	[TestFixture, Explicit]
+	[TestFixture, Explicit, SingleThreaded]
 	public class PerformanceTests : PersistentQueueTestsBase
 	{
+		protected override string Path => "./PerformanceTests";
+
 		[Test, Description(
 			"With a mid-range SSD, this is some 20x slower " +
 			"than with a single flush (depends on disk speed)")]

@@ -8,9 +8,11 @@ using DiskQueue.Implementation;
 
 namespace DiskQueue.Tests
 {
-	[TestFixture]
+	[TestFixture, SingleThreaded]
 	public class TransactionLogTests : PersistentQueueTestsBase
 	{
+		protected override string Path => "./TransactionLogTests";
+
 		[Test]
 		public void Transaction_log_size_shrink_after_queue_disposed()
 		{
