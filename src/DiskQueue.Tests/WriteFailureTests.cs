@@ -13,7 +13,7 @@ namespace DiskQueue.Tests
         [Test]
         public void enqueue_fails_if_disk_is_full_but_dequeue_still_works ()
         {
-            IPersistentQueue subject = new PersistentQueue(Path);
+            using var subject = new PersistentQueue(Path);
             subject.HardDelete(true);
 
             using (var session = subject.OpenSession())
@@ -39,6 +39,9 @@ namespace DiskQueue.Tests
                     Assert.Throws<IOException>(() => { session.Flush(); }, "should have thrown an exception when trying to write");
                 }
             }
+            
+            // Restore driver so we can dispose correctly.
+            subject.Internals.SetFileDriver(new StandardFileDriver());
         }
     }
 

@@ -50,6 +50,10 @@ namespace DiskQueue.Tests
 				{
 					Console.WriteLine("Not allowed to delete queue directory. May fail later");
 				}
+				catch (IOException) // Covers "The process cannot access the file because it is being used by another process"
+				{
+					Console.WriteLine("Not allowed to delete queue directory. May fail later");
+				}
 			}
 		}
 	}

@@ -13,7 +13,6 @@ namespace DiskQueue.Tests
 		{
 			using (var queue = new PersistentQueue(Path))
 			{
-				queue.HardDelete(true);
 				Assert.AreEqual(0, queue.EstimatedCountOfItemsInQueue);
 			}
 		}
@@ -23,7 +22,6 @@ namespace DiskQueue.Tests
 		{
 			using (var queue = new PersistentQueue(Path))
 			{
-                queue.HardDelete(true);
 				for (byte i = 0; i < 5; i++)
 				{
 					using (var session = queue.OpenSession())
@@ -42,7 +40,6 @@ namespace DiskQueue.Tests
 		{
 			using (var queue = new PersistentQueue(Path))
 			{
-                queue.HardDelete(true);
 				for (byte i = 0; i < 5; i++)
 				{
 					using (var session = queue.OpenSession())

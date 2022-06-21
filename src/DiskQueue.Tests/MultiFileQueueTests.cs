@@ -13,7 +13,6 @@ namespace DiskQueue.Tests
 		{
 			using (IPersistentQueue queue = new PersistentQueue(Path, 10))
 			{
-                queue.HardDelete(true);
                 Assert.AreEqual(10, queue.MaxFileSize);
 			}
 		}
@@ -23,7 +22,6 @@ namespace DiskQueue.Tests
 		{
 			using (var queue = new PersistentQueue(Path, 10))
 			{
-				queue.HardDelete(true);
 				for (byte i = 0; i < 11; i++)
 				{
 					using (var session = queue.OpenSession())
@@ -41,7 +39,6 @@ namespace DiskQueue.Tests
 		{
 			using (var queue = new PersistentQueue(Path, 10))
 			{
-                queue.HardDelete(true);
                 for (byte i = 0; i < 11; i++)
 				{
 					using (var session = queue.OpenSession())
@@ -59,7 +56,6 @@ namespace DiskQueue.Tests
 		{
 			using (var queue = new PersistentQueue(Path, 10))
 			{
-                queue.HardDelete(true);
                 for (byte i = 0; i < 11; i++)
 				{
 					using (var session = queue.OpenSession())
@@ -89,7 +85,6 @@ namespace DiskQueue.Tests
 		{
 			using (var queue = new PersistentQueue(Path, 10))
 			{
-                queue.HardDelete(true);
                 for (byte i = 0; i < 12; i++)
 				{
 					using (var session = queue.OpenSession())
@@ -119,7 +114,6 @@ namespace DiskQueue.Tests
 		{
 			using (var queue = new PersistentQueue(Path, 10))
 			{
-                queue.HardDelete(true);
                 for (byte i = 0; i < 12; i++)
 				{
 					using (var session = queue.OpenSession())
@@ -169,7 +163,6 @@ namespace DiskQueue.Tests
 		{
 			using (var queue = new PersistentQueue(Path, 10))
 			{
-                queue.HardDelete(true);
                 for (byte i = 0; i < 12; i++) // 12 individual bytes, and a 10 byte file limit
 				{
 					using (var session = queue.OpenSession())
