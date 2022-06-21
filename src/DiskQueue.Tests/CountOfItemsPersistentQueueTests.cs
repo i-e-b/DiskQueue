@@ -6,6 +6,8 @@ namespace DiskQueue.Tests
     [TestFixture, SingleThreaded]
 	public class CountOfItemsPersistentQueueTests : PersistentQueueTestsBase
 	{
+		protected override string Path => "./CountOfItemsTests";
+
         [Test]
 		public void Can_get_count_from_queue()
 		{

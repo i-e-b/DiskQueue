@@ -5,7 +5,7 @@ using NUnit.Framework;
 
 namespace DiskQueue.Tests
 {
-	[TestFixture]
+	[TestFixture, SingleThreaded]
 	public class ThreadSafeAccessTests
 	{
 		[Test]

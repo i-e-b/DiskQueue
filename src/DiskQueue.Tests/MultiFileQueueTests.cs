@@ -6,6 +6,8 @@ namespace DiskQueue.Tests
 	[TestFixture, SingleThreaded]
 	public class MultiFileQueueTests : PersistentQueueTestsBase
 	{
+		protected override string Path => "./MultiFileQueue";
+
         [Test]
 		public void Can_limit_amount_of_items_in_queue_file()
 		{

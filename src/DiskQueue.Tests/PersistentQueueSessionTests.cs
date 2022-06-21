@@ -15,6 +15,8 @@ namespace DiskQueue.Tests
     [TestFixture, SingleThreaded]
     public class PersistentQueueSessionTests : PersistentQueueTestsBase
     {
+        protected override string Path => "./PersistentQueueSessionTest";
+
         [Test]
         public void Errors_raised_during_pending_write_will_be_thrown_on_flush()
         {

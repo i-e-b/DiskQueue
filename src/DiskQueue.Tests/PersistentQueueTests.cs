@@ -11,6 +11,8 @@ namespace DiskQueue.Tests
 	[TestFixture, SingleThreaded]
 	public class PersistentQueueTests : PersistentQueueTestsBase
 	{
+		protected override string Path => "./PersistentQueueTests";
+
 		[Test]
 		public void Only_single_instance_of_queue_can_exists_at_any_one_time()
         {

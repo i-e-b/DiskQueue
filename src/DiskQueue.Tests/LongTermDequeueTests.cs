@@ -12,7 +12,7 @@ namespace DiskQueue.Tests
 		[SetUp]
 		public void Setup()
 		{
-			_q = PersistentQueue.WaitFor("./queue", TimeSpan.FromSeconds(10));
+			_q = PersistentQueue.WaitFor("./LongTermDequeueTests", TimeSpan.FromSeconds(10));
 		}
 
 		[TearDown]

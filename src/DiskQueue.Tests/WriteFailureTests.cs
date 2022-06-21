@@ -6,12 +6,14 @@ using NUnit.Framework;
 namespace DiskQueue.Tests
 {
     [TestFixture]
-    public class WriteFailureTests
+    public class WriteFailureTests : PersistentQueueTestsBase
     {
+        protected override string Path => "./WriteFailureTests";
+
         [Test]
         public void enqueue_fails_if_disk_is_full_but_dequeue_still_works ()
         {
-            IPersistentQueue subject = new PersistentQueue("queue_wf");
+            IPersistentQueue subject = new PersistentQueue(Path);
             subject.HardDelete(true);
 
             using (var session = subject.OpenSession())

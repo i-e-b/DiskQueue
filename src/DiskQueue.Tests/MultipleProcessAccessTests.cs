@@ -7,8 +7,10 @@ using NUnit.Framework;
 namespace DiskQueue.Tests
 {
 	[TestFixture]
-	public class MultipleProcessAccessTests
+	public class MultipleProcessAccessTests : PersistentQueueTestsBase
 	{
+		protected override string Path => "./MultipleProcessAccessTests";
+
 		[Test,
 		Description("Multiple PersistentQueue instances are " +
 		            "pretty much the same as multiple processes to " +
@@ -49,7 +51,7 @@ namespace DiskQueue.Tests
 		private void AddToQueue(byte[] data)
 		{
 			Thread.Sleep(150);
-			using (var queue = PersistentQueue.WaitFor(SharedStorage, TimeSpan.FromSeconds(30)))
+			using (var queue = PersistentQueue.WaitFor(Path, TimeSpan.FromSeconds(30)))
 			using (var session = queue.OpenSession())
 			{
 				session.Enqueue(data);
@@ -60,7 +62,7 @@ namespace DiskQueue.Tests
 		private byte[] ReadQueue()
 		{
 			Thread.Sleep(150);
-			using (var queue = PersistentQueue.WaitFor(SharedStorage, TimeSpan.FromSeconds(30)))
+			using (var queue = PersistentQueue.WaitFor(Path, TimeSpan.FromSeconds(30)))
 			using (var session = queue.OpenSession())
 			{
 				var data = session.Dequeue();
@@ -68,7 +70,5 @@ namespace DiskQueue.Tests
 				return data ?? throw new Exception("Read failed");
 			}
 		}
-
-		protected string SharedStorage => "./MultipleAccess";
 	}
 }

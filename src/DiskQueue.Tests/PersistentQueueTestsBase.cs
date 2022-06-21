@@ -6,10 +6,11 @@ using System.IO;
 
 namespace DiskQueue.Tests
 {
-	public class PersistentQueueTestsBase
+	public abstract class PersistentQueueTestsBase
 	{
-		protected const string Path = @"./queue";
-		private static readonly object _lock = new Object();
+		protected abstract string Path { get; }
+		
+		private static readonly object _lock = new object();
 
 		[SetUp]
 		public void Setup()
@@ -26,7 +27,7 @@ namespace DiskQueue.Tests
 			RebuildPath();
 		}
 
-		private static void RebuildPath()
+		private void RebuildPath()
 		{
 			lock (_lock)
 			{
