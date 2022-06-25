@@ -13,7 +13,7 @@ namespace DiskQueue
 	/// <para>If you want to share the store between threads in one process, you may share the Persistent Queue and
 	/// have each thread call `OpenSession` for itself.</para>
 	/// </summary>
-	public sealed class PersistentQueue : IPersistentQueue
+	public class PersistentQueue : IPersistentQueue
 	{
 		private PersistentQueueImpl? _queue;
 
@@ -42,7 +42,7 @@ namespace DiskQueue
 					}
 					catch (PlatformNotSupportedException ex)
 					{
-						Console.WriteLine("Blocked by " + ex.GetType()?.Name + "; " + ex.Message + "\r\n\r\n" + ex.StackTrace);
+						Console.WriteLine("Blocked by " + ex.GetType()?.Name + "; " + ex.Message + Environment.NewLine + Environment.NewLine + ex.StackTrace);
 						throw;
 					}
 					catch
@@ -57,6 +57,11 @@ namespace DiskQueue
 			}
 			throw new TimeoutException("Could not acquire a lock in the time specified");
 		}
+
+		/// <summary>
+		/// THis constructor is only for use by derived classes.
+		/// </summary>
+		protected PersistentQueue() { }
 
 		/// <summary>
 		/// Create or connect to a persistent store at the given storage path.
@@ -195,5 +200,4 @@ namespace DiskQueue
 			public static int FileTimeoutMilliseconds { get; set; } = 10_000;
 		}
 	}
-
 }

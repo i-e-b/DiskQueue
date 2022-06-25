@@ -753,7 +753,7 @@ namespace DiskQueue.Implementation
 			return transactionBuffer;
 		}
 
-		private IFileStream CreateWriter()
+		protected IFileStream CreateWriter()
 		{
 			var dataFilePath = GetDataPath(CurrentFileNumber);
 			return _file.OpenWriteStream(dataFilePath);
