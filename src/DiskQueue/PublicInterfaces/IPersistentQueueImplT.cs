@@ -1,13 +1,6 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
-
-namespace DiskQueue.PublicInterfaces
+﻿namespace DiskQueue
 {
-    /// <summary>
-    /// 
-    /// </summary>
-    /// <typeparam name="T"></typeparam>
+    /// <inheritdoc/>
     public interface IPersistentQueueImpl<T>: IPersistentQueueImpl
     {
     }

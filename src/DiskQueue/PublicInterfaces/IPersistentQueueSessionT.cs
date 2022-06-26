@@ -1,12 +1,6 @@
-﻿using System;
-
-namespace DiskQueue
+﻿namespace DiskQueue
 {
-    /// <summary>
-    /// Queue session (exclusive use of the queue to add or remove items)
-    /// The queue session should be wrapped in a `using`, as it must be disposed.
-    /// If you are sharing access, you should hold the queue session for as little time as possible.
-    /// </summary>
+    /// <inheritdoc/>
     public interface IPersistentQueueSession<T> : IPersistentQueueSession
     {
         /// <summary>

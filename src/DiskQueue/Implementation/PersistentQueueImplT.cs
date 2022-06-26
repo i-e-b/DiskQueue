@@ -1,10 +1,6 @@
-﻿using DiskQueue.PublicInterfaces;
-using System;
-using System.Collections.Generic;
-using System.Text;
-
-namespace DiskQueue.Implementation
+﻿namespace DiskQueue.Implementation
 {
+    /// <inheritdoc cref="IPersistentQueueImpl{T}"/>
     internal class PersistentQueueImpl<T> : PersistentQueueImpl, IPersistentQueueImpl<T>
     {
         public PersistentQueueImpl(string path) : base(path) { }
