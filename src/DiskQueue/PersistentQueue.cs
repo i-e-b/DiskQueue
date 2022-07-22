@@ -15,7 +15,10 @@ namespace DiskQueue
 	/// </summary>
 	public class PersistentQueue : IPersistentQueue
 	{
-		private PersistentQueueImpl? _queue;
+		/// <summary>
+		/// The queue implementation instance, or null if not connected
+		/// </summary>
+		protected IPersistentQueueImpl? Queue;
 
 		/// <summary>
 		/// Wait a maximum time to open an exclusive session.
@@ -55,7 +58,48 @@ namespace DiskQueue
 			{
 				sw.Stop();
 			}
-			throw new TimeoutException("Could not acquire a lock in the time specified");
+			throw new TimeoutException($"Could not acquire a lock on '{storagePath}' in the time specified");
+		}
+		
+		/// <summary>
+		/// Wait a maximum time to open an exclusive session.
+		/// <para>If sharing storage between processes, the resulting queue should disposed
+		/// as soon as possible.</para>
+		/// <para>Throws a TimeoutException if the queue can't be locked in the specified time</para>
+		/// </summary>
+		/// <exception cref="TimeoutException"></exception>
+		public static IPersistentQueue<T> WaitFor<T>(string storagePath, TimeSpan maxWait)
+		{
+			var sw = new Stopwatch();
+			try
+			{
+				sw.Start();
+				do
+				{
+					try
+					{
+						return new PersistentQueue<T>(storagePath);
+					}
+					catch (DirectoryNotFoundException)
+					{
+						throw new Exception("Target storagePath does not exist or is not accessible");
+					}
+					catch (PlatformNotSupportedException ex)
+					{
+						Console.WriteLine("Blocked by " + ex.GetType()?.Name + "; " + ex.Message + Environment.NewLine + Environment.NewLine + ex.StackTrace);
+						throw;
+					}
+					catch
+					{
+						Thread.Sleep(50);
+					}
+				} while (sw.Elapsed < maxWait);
+			}
+			finally
+			{
+				sw.Stop();
+			}
+			throw new TimeoutException($"Could not acquire a lock on '{storagePath}' in the time specified");
 		}
 
 		/// <summary>
@@ -70,7 +114,7 @@ namespace DiskQueue
 		/// </summary>
 		public PersistentQueue(string storagePath)
 		{
-			_queue = new PersistentQueueImpl(storagePath);
+			Queue = new PersistentQueueImpl(storagePath);
 		}
 		
 		/// <summary>
@@ -82,7 +126,7 @@ namespace DiskQueue
 		/// </summary>
 		public PersistentQueue(string storagePath, int maxSize, bool throwOnConflict = true)
 		{
-			_queue = new PersistentQueueImpl(storagePath, maxSize, throwOnConflict);
+			Queue = new PersistentQueueImpl(storagePath, maxSize, throwOnConflict);
 		}
 
 		/// <summary>
@@ -91,7 +135,7 @@ namespace DiskQueue
 		[System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Usage", "CA2213:DisposableFieldsShouldBeDisposed", MessageId = "_queue", Justification = "Disposed in an interlock")]
 		public void Dispose()
 		{
-			var local = Interlocked.Exchange(ref _queue, null);
+			var local = Interlocked.Exchange(ref Queue, null);
 			if (local == null) return;
 			local.Dispose();
 			GC.SuppressFinalize(this);
@@ -104,7 +148,7 @@ namespace DiskQueue
 		/// </summary>
 		~PersistentQueue()
 		{
-			if (_queue == null) return;
+			if (Queue == null) return;
 			Dispose();
 		}
 
@@ -113,26 +157,26 @@ namespace DiskQueue
 		/// </summary>
 		public IPersistentQueueSession OpenSession()
 		{
-			if (_queue == null) throw new Exception("This queue has been disposed");
-			return _queue.OpenSession();
+			if (Queue == null) throw new Exception("This queue has been disposed");
+			return Queue.OpenSession();
 		}
 
 		/// <summary>
 		/// Returns the number of items in the queue, but does not include items added or removed
 		/// in currently open sessions.
 		/// </summary>
-		public int EstimatedCountOfItemsInQueue => _queue?.EstimatedCountOfItemsInQueue ?? 0;
+		public int EstimatedCountOfItemsInQueue => Queue?.EstimatedCountOfItemsInQueue ?? 0;
 
 		/// <summary>
 		/// Advanced adjustable settings. Use with caution. Read the source code.
 		/// </summary>
-		public IPersistentQueueImpl Internals => _queue ?? throw new InvalidOperationException("Internals not available in this state");
+		public IPersistentQueueImpl Internals => Queue ?? throw new InvalidOperationException("Internals not available in this state");
 
 		/// <summary>
 		/// Maximum size of files in queue. New files will be rolled-out if this is exceeded.
 		/// (i.e. this is NOT the maximum size of the queue)
 		/// </summary>
-		public int MaxFileSize => _queue?.MaxFileSize ?? 0;
+		public int MaxFileSize => Queue?.MaxFileSize ?? 0;
 
 		/// <summary>
 		/// WARNING: 
@@ -140,8 +184,8 @@ namespace DiskQueue
 		/// </summary>
 		public void HardDelete(bool reset)
 		{
-			if (_queue is null) throw new Exception("This queue has been disposed");
-			_queue.HardDelete(reset);
+			if (Queue is null) throw new Exception("This queue has been disposed");
+			Queue.HardDelete(reset);
 		}
 
 		/// <summary>
@@ -150,8 +194,8 @@ namespace DiskQueue
 		/// </summary>
 		public long SuggestedMaxTransactionLogSize
 		{
-			get => _queue?.SuggestedMaxTransactionLogSize ?? 0;
-			set { if (_queue != null) _queue.SuggestedMaxTransactionLogSize = value; }
+			get => Queue?.SuggestedMaxTransactionLogSize ?? 0;
+			set { if (Queue != null) Queue.SuggestedMaxTransactionLogSize = value; }
 		}
 
 		/// <summary>
@@ -161,8 +205,8 @@ namespace DiskQueue
 		/// </summary>
 		public bool TrimTransactionLogOnDispose
 		{
-			get => _queue?.TrimTransactionLogOnDispose ?? true;
-			set { if (_queue != null) _queue.TrimTransactionLogOnDispose = value; }
+			get => Queue?.TrimTransactionLogOnDispose ?? true;
+			set { if (Queue != null) Queue.TrimTransactionLogOnDispose = value; }
 		}
 
 		/// <summary>

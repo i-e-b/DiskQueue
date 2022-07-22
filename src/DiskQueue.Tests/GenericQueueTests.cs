@@ -6,10 +6,15 @@ namespace DiskQueue.Tests
     [TestFixture, SingleThreaded]
     public class GenericQueueTests
     {
+        // Note: having the queue files shared between the tests checks that we 
+        // are correctly closing down the queue (i.e. the `Dispose()` call works)
+        // If not, one of the files will fail complaining that the lock is still held.
+        private const string QueueName = "./GenericQueueTest";
+        
         [Test]
         public void Round_trip_value_type()
         {
-            using var queue = new PersistentQueue<int>("./GenericQueueTests1");
+            using var queue = new PersistentQueue<int>(QueueName); 
             using var session = queue.OpenSession();
 
             session.Enqueue(7);
@@ -39,7 +44,7 @@ namespace DiskQueue.Tests
         [Test]
         public void Round_trip_complex_type()
         {
-            using var queue = new PersistentQueue<TestClass>("./GenericQueueTests2");
+            using var queue = new PersistentQueue<TestClass>(QueueName);
             using var session = queue.OpenSession();
 
             var testObject = new TestClass(7, "TestString", null);

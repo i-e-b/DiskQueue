@@ -68,9 +68,38 @@ namespace DiskQueue
 		bool AllowTruncatedEntries { get; set; }
 
 		/// <summary>
+		/// Approximate size of the queue. Used for testing
+		/// </summary>
+		int EstimatedCountOfItemsInQueue { get; }
+
+		/// <summary>
+		/// Configured maximum size of each queue file.
+		/// Files will be split and rolled after this limit.
+		/// </summary>
+		int MaxFileSize { get; }
+
+		/// <summary>
+		/// If the transaction log is near this size, it will be flushed and trimmed.
+		/// If you set Internals.ParanoidFlushing, this value is ignored.
+		/// </summary>
+		long SuggestedMaxTransactionLogSize { get; set; }
+
+		/// <summary>
 		/// Override the file access mechanism. For test and advanced users only.
 		/// See the source code for more details.
 		/// </summary>
 		void SetFileDriver(IFileDriver writeFailureDriver);
+
+		/// <summary>
+		/// Lock the queue for use, and give access to session methods.
+		/// The session <b>MUST</b> be disposed as soon as possible.
+		/// </summary>
+		IPersistentQueueSession OpenSession();
+
+		/// <summary>
+		/// WARNING: 
+		/// Attempt to delete the queue, all its data, and all support files.
+		/// </summary>
+		void HardDelete(bool reset);
 	}
 }

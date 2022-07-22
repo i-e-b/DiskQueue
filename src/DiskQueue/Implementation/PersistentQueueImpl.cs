@@ -75,7 +75,7 @@ namespace DiskQueue.Implementation
 
 		public bool TrimTransactionLogOnDispose { get; set; }
 
-	    public readonly int MaxFileSize;
+	    public int MaxFileSize { get; set; }
 
 		public PersistentQueueImpl(string path, int maxFileSize, bool throwOnConflict)
 		{
