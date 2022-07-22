@@ -7,19 +7,31 @@ Requirements and Environment
 ----------------------------
 Works on .Net 4+ and Mono 2.10.8+ (3.0.6+ recommended)
 
-Requires access to filesystem storage
+Requires access to filesystem storage.
+
+The file system is used to hold locks, so any bug in your file system may cause
+issues with DiskQueue -- although it tries to work around them.
 
 
 Basic Usage
 -----------
+
  - `PersistentQueue.WaitFor(...)` is the main entry point. This will attempt to gain an exclusive lock
    on the given storage location. On first use, a directory will be created with the required files
    inside it.
  - This queue object can be shared among threads. Each thread should call `OpenSession()` to get its 
    own session object.
  - Both `IPersistentQueue`s and `IPersistentQueueSession`s should be wrapped in `using()` clauses, or otherwise
-   disposed of properly.
+   disposed of properly. Failure to do this will result in lock contention -- you will get errors that the queue
+   is still in use.
    
+Thanks to Tom Halter, there is also `new PersistentQueue<T>(...);` which will handle the serialisation and deserialisation of
+elements in the queue, as long at the type is decorated with `[Serializable]`.
+
+Use `new PersistentQueue<T>(...)` in place of `new PersistentQueue(...)`
+or `PersistentQueue.WaitFor<T>(...)` in place of `PersistentQueue.WaitFor(...)` in any of the examples below.
+
+
 Example
 -------
 Queue on one thread, consume on another; retry some exceptions.
@@ -170,6 +182,14 @@ byte[] ReadQueue() {
 ...
 
 ```
+
+Cross-process Locking
+---------------------
+
+DiskQueue tries very hard to make sure the lock files are managed correctly.
+You can use this as an inter-process lock if required. Simply open a session to
+acquire the lock, and dispose of the session to release it.
+
 
 If you need the transaction semantics of sessions across multiple processes, try a more robust solution like https://github.com/i-e-b/SevenDigital.Messaging
 

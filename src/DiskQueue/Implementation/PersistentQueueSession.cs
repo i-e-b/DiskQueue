@@ -11,7 +11,7 @@ namespace DiskQueue.Implementation
 	/// <para>You should use <see cref="IPersistentQueue.OpenSession"/> to get a session.</para>
 	/// <example>using (var q = PersistentQueue.WaitFor("myQueue")) using (var session = q.OpenSession()) { ... }</example>
 	/// </summary>
-	public sealed class PersistentQueueSession : IPersistentQueueSession
+	public class PersistentQueueSession : IPersistentQueueSession
 	{
 		private readonly List<Operation> _operations = new();
 		private readonly List<Exception> _pendingWritesFailures = new();

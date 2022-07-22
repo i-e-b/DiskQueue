@@ -75,7 +75,7 @@ namespace DiskQueue.Implementation
 
 		public bool TrimTransactionLogOnDispose { get; set; }
 
-	    public readonly int MaxFileSize;
+	    public int MaxFileSize { get; set; }
 
 		public PersistentQueueImpl(string path, int maxFileSize, bool throwOnConflict)
 		{
@@ -753,7 +753,7 @@ namespace DiskQueue.Implementation
 			return transactionBuffer;
 		}
 
-		private IFileStream CreateWriter()
+		protected IFileStream CreateWriter()
 		{
 			var dataFilePath = GetDataPath(CurrentFileNumber);
 			return _file.OpenWriteStream(dataFilePath);

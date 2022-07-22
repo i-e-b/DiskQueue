@@ -1,0 +1,124 @@
+﻿using System;
+using NUnit.Framework;
+
+namespace DiskQueue.Tests
+{
+    [TestFixture, SingleThreaded]
+    public class GenericQueueTests
+    {
+        // Note: having the queue files shared between the tests checks that we 
+        // are correctly closing down the queue (i.e. the `Dispose()` call works)
+        // If not, one of the files will fail complaining that the lock is still held.
+        private const string QueueName = "./GenericQueueTest";
+        
+        [Test]
+        public void Round_trip_value_type()
+        {
+            using var queue = new PersistentQueue<int>(QueueName); 
+            using var session = queue.OpenSession();
+
+            session.Enqueue(7);
+            session.Flush();
+            var testNumber = session.Dequeue();
+            session.Flush();
+            Assert.AreEqual(7, testNumber);
+        }
+
+        [TestCase("Test")]
+        [TestCase("")]
+        [TestCase(" Leading Spaces")]
+        [TestCase("Trailing Spaces   ")]
+        public void Round_trip_string_type(string valueToTest)
+        {
+            // Use different queue for each test case so that we don't get errors when running tests concurrently.
+            using var queue = new PersistentQueue<string>($"./GenericQueueTests3{valueToTest.Trim()}");
+            using var session = queue.OpenSession();
+
+            session.Enqueue(valueToTest);
+            session.Flush();
+            var returnValue = session.Dequeue();
+            session.Flush();
+            Assert.AreEqual(valueToTest, returnValue);
+        }
+
+        [Test]
+        public void Round_trip_complex_type()
+        {
+            using var queue = new PersistentQueue<TestClass>(QueueName);
+            using var session = queue.OpenSession();
+
+            var testObject = new TestClass(7, "TestString", null);
+            session.Enqueue(testObject);
+            session.Flush();
+            var testObject2 = session.Dequeue();
+            session.Flush();
+            Assert.IsNotNull(testObject2);
+            Assert.AreEqual(testObject,testObject2);
+
+            testObject = new TestClass(7, "TestString", -5);
+            session.Enqueue(testObject);
+            session.Flush();
+            testObject2 = session.Dequeue();
+            session.Flush();
+            Assert.IsNotNull(testObject2);
+            Assert.AreEqual(testObject, testObject2);
+        }
+    }
+
+    /// <summary>
+    /// Test class for tests on <see cref="PersistentQueue{T}"/>
+    /// </summary>
+    [Serializable]
+    public class TestClass : IEquatable<TestClass>
+    {
+        public TestClass(int integerValue, string stringValue, int? nullableIntegerValue)
+        {
+            IntegerValue = integerValue;
+            StringValue = stringValue;
+            NullableIntegerValue = nullableIntegerValue;
+        }
+
+        public int IntegerValue { get; }
+        public string StringValue { get; }
+        public int? NullableIntegerValue { get; }
+
+        public bool Equals(TestClass? other)
+        {
+            if (ReferenceEquals(null, other)) return false;
+            if (ReferenceEquals(this, other)) return true;
+            return IntegerValue == other.IntegerValue && StringValue == other.StringValue && NullableIntegerValue == other.NullableIntegerValue;
+        }
+
+        public override bool Equals(object? obj)
+        {
+            if (ReferenceEquals(null, obj)) return false;
+            if (ReferenceEquals(this, obj)) return true;
+            if (obj.GetType() != this.GetType()) return false;
+            return Equals((TestClass)obj);
+        }
+
+        public override int GetHashCode()
+        {
+            return HashCode.Combine(IntegerValue, StringValue, NullableIntegerValue);
+        }
+
+        public static bool operator ==(TestClass left, TestClass right)
+        {
+            return Equals(left, right);
+        }
+
+        public static bool operator !=(TestClass left, TestClass right)
+        {
+            return !Equals(left, right);
+        }
+
+        /// <summary>
+        /// Override ToString so that the contents can easily be inspected in the debugger.
+        /// </summary>
+        /// <returns></returns>
+        public override string ToString()
+        {
+            return $"{IntegerValue}|{StringValue}|{NullableIntegerValue}";
+        }
+    }
+}
