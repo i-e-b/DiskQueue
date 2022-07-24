@@ -1,7 +1,12 @@
 DiskQueue
 =========
 
-A thread-safe, multi-process(ish) persistent queue, based very heavily on  http://ayende.com/blog/3479/rhino-queues-storage-disk .
+* https://www.nuget.org/packages/DiskQueue
+* https://github.com/i-e-b/DiskQueue
+
+A robust, thread-safe, and multi-process persistent queue.
+
+Based very heavily on  http://ayende.com/blog/3479/rhino-queues-storage-disk
 
 Requirements and Environment
 ----------------------------
