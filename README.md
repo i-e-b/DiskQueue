@@ -26,7 +26,7 @@ Basic Usage
    is still in use.
    
 Thanks to Tom Halter, there is also a generic-typed `PersistentQueue<T>(...);` which will handle the serialisation and deserialization of
-elements in the queue, as long at the type is decorated with `[Serializable]`. You can also inject your own `ISerializationStrategy` 
+elements in the queue, as long at the type is decorated with `[Serializable]`. You can also inject your own `ISerializationStrategy<T>` 
 into your `PersistentQueueSession<T>` if you wish to have more granular control over Serialization/Deserialization, or if you wish to 
 use your own serializer (e.g Json.NET).
 
