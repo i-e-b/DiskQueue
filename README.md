@@ -30,8 +30,10 @@ Basic Usage
    disposed of properly. Failure to do this will result in lock contention -- you will get errors that the queue
    is still in use.
    
-Thanks to Tom Halter, there is also `new PersistentQueue<T>(...);` which will handle the serialisation and deserialisation of
-elements in the queue, as long at the type is decorated with `[Serializable]`.
+Thanks to Tom Halter, there is also a generic-typed `PersistentQueue<T>(...);` which will handle the serialisation and deserialization of
+elements in the queue, as long at the type is decorated with `[Serializable]`. You can also inject your own `ISerializationStrategy<T>` 
+into your `PersistentQueueSession<T>` if you wish to have more granular control over Serialization/Deserialization, or if you wish to 
+use your own serializer (e.g Json.NET).
 
 Use `new PersistentQueue<T>(...)` in place of `new PersistentQueue(...)`
 or `PersistentQueue.WaitFor<T>(...)` in place of `PersistentQueue.WaitFor(...)` in any of the examples below.
