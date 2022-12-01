@@ -3,6 +3,23 @@ using DiskQueue.Implementation;
 
 namespace DiskQueue
 {
+
+    /// <summary>
+    /// Wrapper around BinaryWriter
+    /// </summary>
+    public interface IBinaryWriter : IDisposable
+    {
+        /// <summary>
+        /// Write bytes to the current position
+        /// </summary>
+        long Write(byte[] bytes);
+
+        /// <summary>
+        /// Truncate the file
+        /// </summary>
+        void Truncate();
+    }
+
     /// <summary>
     /// Wrapper around BinaryReader
     /// </summary>
@@ -63,12 +80,12 @@ namespace DiskQueue
         /// <summary>
         /// Try to get a lock on a file path
         /// </summary>
-        Maybe<LockFile> CreateLockFile(string path);
+        Maybe<ILockFile> CreateLockFile(string path);
 
         /// <summary>
         /// Release a lock that was previously held
         /// </summary>
-        void ReleaseLock(LockFile fileLock);
+        void ReleaseLock(ILockFile fileLock);
 
         /// <summary>
         /// Ready a file for delete on next call to Finalise
@@ -107,13 +124,13 @@ namespace DiskQueue
         /// Access is optimised for sequential scanning.
         /// No file share is permitted.
         /// </summary>
-        void AtomicRead(string path, Action<IFileStream> action);
+        void AtomicRead(string path, Action<IBinaryReader> action);
 
         /// <summary>
         /// Run a write action over a file by name.
         /// No file share is permitted.
         /// </summary>
-        void AtomicWrite(string path, Action<IFileStream> action);
+        void AtomicWrite(string path, Action<IBinaryWriter> action);
 
         /// <summary>
         /// Returns true if a readable file exists at the given path. False otherwise

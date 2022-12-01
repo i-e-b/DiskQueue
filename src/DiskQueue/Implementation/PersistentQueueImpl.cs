@@ -49,7 +49,7 @@ namespace DiskQueue.Implementation
 	    private readonly bool _throwOnConflict;
 	    private static readonly object _configLock = new();
 	    private volatile bool _disposed;
-		private LockFile? _fileLock;
+		private ILockFile? _fileLock;
 
 		public int SuggestedReadBuffer { get; set; }
 		public int SuggestedWriteBuffer { get; set; }
@@ -455,9 +455,8 @@ namespace DiskQueue.Implementation
 		{
 			var requireTxLogTrimming = false;
 			
-			_file.AtomicRead(TransactionLog, stream =>
+			_file.AtomicRead(TransactionLog, binaryReader =>
 			{
-				using var binaryReader = stream.GetBinaryReader();
 				bool readingTransaction = false;
 				try
 				{
@@ -545,7 +544,7 @@ namespace DiskQueue.Implementation
 			}
 			_file.AtomicWrite(TransactionLog, stream =>
 			{
-				stream.SetLength(transactionBuffer.Length);
+				stream.Truncate();
 				stream.Write(transactionBuffer);
 			});
 		}
@@ -693,11 +692,10 @@ namespace DiskQueue.Implementation
 
 		private void ReadMetaState()
 		{
-			_file.AtomicRead(Meta, stream =>
+			_file.AtomicRead(Meta, binaryReader =>
 			{
 				try
 				{
-					using var binaryReader = stream.GetBinaryReader();
 					CurrentFileNumber = binaryReader.ReadInt32();
 					CurrentFilePosition = binaryReader.ReadInt64();
 				}

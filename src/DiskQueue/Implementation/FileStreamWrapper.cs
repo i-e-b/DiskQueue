@@ -7,7 +7,7 @@ using System.Threading.Tasks;
 
 namespace DiskQueue.Implementation
 {
-    internal class FileStreamWrapper : IFileStream, IBinaryReader
+    internal class FileStreamWrapper : IFileStream, IBinaryReader, IBinaryWriter
     {
         private readonly Stream _base;
 
@@ -41,7 +41,12 @@ namespace DiskQueue.Implementation
         public IBinaryReader GetBinaryReader() => this;
         public void SetLength(long length) => _base.SetLength(length);
         public void SetPosition(long position) => _base.Seek(position, SeekOrigin.Begin);
-        
+
+        public void Truncate()
+        {
+            SetLength(0);
+        }
+
         public int ReadInt32()
         {
             var d = _base.ReadByte();

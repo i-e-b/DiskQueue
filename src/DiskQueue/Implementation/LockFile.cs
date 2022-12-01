@@ -4,9 +4,10 @@ using System.IO;
 namespace DiskQueue.Implementation
 {
     /// <summary>
-    /// An inter-process lock based on a file
+    /// An inter-process lock based on a file.
+    /// This is based on holding an open file stream
     /// </summary>
-    public class LockFile : IDisposable
+    public class LockFile : ILockFile, IDisposable
     {
         private readonly FileStream _stream;
         private readonly string _path;

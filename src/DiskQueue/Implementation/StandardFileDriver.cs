@@ -15,7 +15,21 @@ namespace DiskQueue.Implementation
 	    
         private static readonly object _lock = new();
         private static readonly Queue<string> _waitingDeletes = new();
+        
+        public string GetFullPath(string path) => Path.GetFullPath(path);
+        public string PathCombine(string a, string b) => Path.Combine(a,b);
 
+        /// <summary>
+        /// Test for the existence of a directory
+        /// </summary>
+        public bool DirectoryExists(string path)
+        {
+            lock (_lock)
+            {
+                return Directory.Exists(path);
+            }
+        }
+        
         /// <summary>
         /// Moves a file to a temporary name and adds it to an internal
         /// delete list. Files are permanently deleted on a call to Finalise()
@@ -58,7 +72,7 @@ namespace DiskQueue.Implementation
         /// <summary>
         /// Create and open a new file with no sharing between processes.
         /// </summary>
-        public LockFile CreateNoShareFile(string path)
+        private static ILockFile CreateNoShareFile(string path)
         {
             lock (_lock)
             {
@@ -91,20 +105,7 @@ namespace DiskQueue.Implementation
 	        Directory.Delete(path, true);
         }
 
-        /// <summary>
-        /// Test for the existence of a directory
-        /// </summary>
-        public bool DirectoryExists(string path)
-        {
-            lock (_lock)
-            {
-                return Directory.Exists(path);
-            }
-        }
-
-        public string PathCombine(string a, string b) => Path.Combine(a,b);
-
-        public Maybe<LockFile> CreateLockFile(string path)
+        public Maybe<ILockFile> CreateLockFile(string path)
         {
 	        try
 	        {
@@ -112,11 +113,11 @@ namespace DiskQueue.Implementation
 	        }
 	        catch (Exception ex)
 	        {
-		        return Maybe<LockFile>.Fail(ex);
+		        return Maybe<ILockFile>.Fail(ex);
 	        }
         }
         
-        public void ReleaseLock(LockFile fileLock)
+        public void ReleaseLock(ILockFile fileLock)
         {
 	        lock (_lock)
 	        {
@@ -138,7 +139,7 @@ namespace DiskQueue.Implementation
         /// <summary>
         /// Rename a file, including its path
         /// </summary>
-        public static bool Move(string oldPath, string newPath)
+        private static bool Move(string oldPath, string newPath)
         {
             lock (_lock)
             {
@@ -158,42 +159,50 @@ namespace DiskQueue.Implementation
             return false;
         }
 
-        public string GetFullPath(string path) => Path.GetFullPath(path);
         public IFileStream OpenTransactionLog(string path, int bufferLength)
         {
-            var stream = new FileStream(path,
-                FileMode.Append,
-                FileAccess.Write,
-                FileShare.None,
-                bufferLength,
-                FileOptions.SequentialScan | FileOptions.WriteThrough);
-            
-            return new FileStreamWrapper(stream);
+	        lock (_lock)
+	        {
+		        var stream = new FileStream(path,
+			        FileMode.Append,
+			        FileAccess.Write,
+			        FileShare.None,
+			        bufferLength,
+			        FileOptions.SequentialScan | FileOptions.WriteThrough);
+
+		        return new FileStreamWrapper(stream);
+	        }
         }
 
         public IFileStream OpenReadStream(string path)
         {
-            var stream = new FileStream(path, FileMode.OpenOrCreate, FileAccess.Read, FileShare.ReadWrite);
-            return new FileStreamWrapper(stream);
+	        lock (_lock)
+	        {
+		        var stream = new FileStream(path, FileMode.OpenOrCreate, FileAccess.Read, FileShare.ReadWrite);
+		        return new FileStreamWrapper(stream);
+	        }
         }
 
         public IFileStream OpenWriteStream(string dataFilePath)
         {
-            var stream = new FileStream(
-                dataFilePath,
-                FileMode.OpenOrCreate,
-                FileAccess.Write,
-                FileShare.ReadWrite,
-                0x10000,
-                FileOptions.Asynchronous | FileOptions.SequentialScan | FileOptions.WriteThrough);
+	        lock (_lock)
+	        {
+		        var stream = new FileStream(
+			        dataFilePath,
+			        FileMode.OpenOrCreate,
+			        FileAccess.Write,
+			        FileShare.ReadWrite,
+			        0x10000,
+			        FileOptions.Asynchronous | FileOptions.SequentialScan | FileOptions.WriteThrough);
 
-            SetPermissions.TryAllowReadWriteForAll(dataFilePath);
-            return new FileStreamWrapper(stream);
+		        SetPermissions.TryAllowReadWriteForAll(dataFilePath);
+		        return new FileStreamWrapper(stream);
+	        }
         }
 
-        public void AtomicRead(string path, Action<IFileStream> action)
+        public void AtomicRead(string path, Action<IBinaryReader> action)
         {
-	        for (int i = 0; i < RetryLimit; i++)
+	        for (int i = 1; i <= RetryLimit; i++)
 	        {
 		        try
 		        {
@@ -211,14 +220,15 @@ namespace DiskQueue.Implementation
 		        catch (Exception ex)
 		        {
 			        Console.WriteLine($"Atomic read failed: {ex}");
+			        if (i >= RetryLimit) throw;
 			        Thread.Sleep(i * 100);
 		        }
 	        }
         }
 
-        public void AtomicWrite(string path, Action<IFileStream> action)
+        public void AtomicWrite(string path, Action<IBinaryWriter> action)
         {
-	        for (int i = 0; i < RetryLimit; i++)
+	        for (int i = 1; i <= RetryLimit; i++)
 	        {
 		        try
 		        {
@@ -230,6 +240,7 @@ namespace DiskQueue.Implementation
 		        }
 		        catch
 		        {
+			        if (i >= RetryLimit) throw;
 			        Thread.Sleep(i * 100);
 		        }
 	        }

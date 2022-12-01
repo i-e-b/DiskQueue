@@ -58,12 +58,12 @@ namespace DiskQueue.Tests
         public bool DirectoryExists(string path) => Directory.Exists(path);
         public string PathCombine(string a, string b) => Path.Combine(a,b);
 
-        public Maybe<LockFile> CreateLockFile(string path)
+        public Maybe<ILockFile> CreateLockFile(string path)
         {
             throw new IOException("Sample CreateLockFile error");
         }
 
-        public void ReleaseLock(LockFile fileLock) { }
+        public void ReleaseLock(ILockFile fileLock) { }
 
         public void PrepareDelete(string path)
         {
@@ -92,12 +92,12 @@ namespace DiskQueue.Tests
             throw new IOException("Sample OpenWriteStream error");
         }
 
-        public void AtomicRead(string path, Action<IFileStream> action)
+        public void AtomicRead(string path, Action<IBinaryReader> action)
         {
             _realDriver.AtomicRead(path, action);
         }
 
-        public void AtomicWrite(string path, Action<IFileStream> action)
+        public void AtomicWrite(string path, Action<IBinaryWriter> action)
         {
             throw new IOException("Sample AtomicWrite error");
         }
