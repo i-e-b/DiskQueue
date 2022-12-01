@@ -4,11 +4,15 @@ using System.Diagnostics;
 using System.IO;
 using System.IO.MemoryMappedFiles;
 using System.Threading;
+using System.Threading.Tasks;
 
 namespace DiskQueue.Implementation
 {
     /// <summary>
-    /// Uses the memory-mapped file interface to interact with file system
+    /// Uses the memory-mapped file interface to interact with file system.
+    /// <p></p>
+    /// All memory-mapped files are a fixed size while we hold them.
+    /// They get allocated in chunks of an OS page size (usually 4K)
     /// </summary>
     internal class MemoryMappedFileDriver : IFileDriver
     {
@@ -146,7 +150,7 @@ namespace DiskQueue.Implementation
         {
             lock (_lock)
             {
-                for (int i = 0; i < RetryLimit; i++)
+                for (var i = 0; i < RetryLimit; i++)
                 {
                     try
                     {
@@ -188,39 +192,252 @@ namespace DiskQueue.Implementation
             lock (_lock)
             {
                 if (!File.Exists(path)) File.WriteAllBytes(path, Array.Empty<byte>());
-                
-                var mapFile = MemoryMappedFile.CreateFromFile(path, FileMode.Open);
-                var stream = mapFile.CreateViewStream();
-                return new FileStreamWrapper(stream);
+                return new MemoryMapStreamWrapper(path);
             }
         }
 
         public IFileStream OpenReadStream(string path)
         {
-            throw new NotImplementedException();
+            lock (_lock)
+            {
+                if (!File.Exists(path)) File.WriteAllBytes(path, Array.Empty<byte>());
+                return new MemoryMapStreamWrapper(path);
+            }
         }
 
         public IFileStream OpenWriteStream(string dataFilePath)
         {
-            throw new NotImplementedException();
+            lock (_lock)
+            {
+                if (!File.Exists(dataFilePath)) File.WriteAllBytes(dataFilePath, Array.Empty<byte>());
+                return new MemoryMapStreamWrapper(dataFilePath);
+            }
         }
 
         public void AtomicRead(string path, Action<IBinaryReader> action)
         {
-            throw new NotImplementedException();
+            for (var i = 1; i <= RetryLimit; i++)
+            {
+                try
+                {
+                    AtomicReadInternal(path, action);
+                    return;
+                }
+                catch (UnrecoverableException)
+                {
+                    throw;
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"Atomic read failed: {ex}");
+                    if (i >= RetryLimit) throw;
+                    Thread.Sleep(i * 100);
+                }
+            }
         }
 
         public void AtomicWrite(string path, Action<IBinaryWriter> action)
         {
-            throw new NotImplementedException();
+            for (var i = 1; i <= RetryLimit; i++)
+            {
+                try
+                {
+                    AtomicWriteInternal(path, action);
+                    return;
+                }
+                catch
+                {
+                    if (i >= RetryLimit) throw;
+                    Thread.Sleep(i * 100);
+                }
+            }
+        }
+        
+        /// <summary>
+        /// Run a read action over a file by name.
+        /// Access is optimised for sequential scanning.
+        /// No file share is permitted.
+        /// </summary>
+        /// <param name="path">File path to read</param>
+        /// <param name="action">Action to consume file stream. You do not need to close the stream yourself.</param>
+        private void AtomicReadInternal(string path, Action<IBinaryReader> action)
+        {
+            lock (_lock)
+            {
+                if (FileExists(path + ".old_copy"))
+                {
+                    if (WaitDelete(path))
+                        Move(path + ".old_copy", path);
+                }
+
+                using var stream = new MemoryMapStreamWrapper(path);
+				
+                SetPermissions.TryAllowReadWriteForAll(path);
+                action(stream);
+            }
+        }
+        
+
+        /// <summary>
+        /// Run a write action to a file.
+        /// This will always rewrite the file (no appending).
+        /// </summary>
+        /// <param name="path">File path to write</param>
+        /// <param name="action">Action to write into file stream. You do not need to close the stream yourself.</param>
+        private void AtomicWriteInternal(string path, Action<IBinaryWriter> action)
+        {
+            lock (_lock)
+            {
+                // if the old copy file exists, this means that we have
+                // a previous corrupt write, so we will not overwrite it, but 
+                // rather overwrite the current file and keep it as our backup.
+                if (FileExists(path) && !FileExists(path + ".old_copy"))
+                    Move(path, path + ".old_copy");
+
+                using var stream = new MemoryMapStreamWrapper(path);
+				
+                SetPermissions.TryAllowReadWriteForAll(path);
+                action(stream);
+
+                WaitDelete(path + ".old_copy");
+            }
+        }
+        
+        
+        private bool WaitDelete(string s)
+        {
+            for (var i = 0; i < RetryLimit; i++)
+            {
+                try
+                {
+                    lock (_lock)
+                    {
+                        PrepareDelete(s);
+                        Finalise();
+                    }
+
+                    return true;
+                }
+                catch
+                {
+                    Thread.Sleep(100);
+                }
+            }
+            return false;
         }
 
         public bool FileExists(string path)
         {
-            throw new NotImplementedException();
+            lock (_lock)
+            {
+                return File.Exists(path);
+            }
         }
 
         public void DeleteRecursive(string path)
+        {
+            lock (_lock)
+            {
+                if (Path.GetPathRoot(path) == Path.GetFullPath(path)) throw new Exception("Request to delete root directory rejected");
+                if (string.IsNullOrWhiteSpace(Path.GetDirectoryName(path)!)) throw new Exception("Request to delete root directory rejected");
+                if (File.Exists(path)) throw new Exception("Tried to recursively delete a single file.");
+
+                Directory.Delete(path, true);
+            }
+        }
+    }
+
+    /// <summary>
+    /// Lock access to the file, and expose memory-mapping as growable stream methods
+    /// </summary>
+    internal class MemoryMapStreamWrapper : IFileStream, IBinaryReader, IBinaryWriter
+    {
+        private readonly string _path;
+        private readonly object _lock = new();
+        private long _position;
+        
+        public MemoryMapStreamWrapper(string path)
+        {
+            _path = path;
+            _position = 0;
+        }
+
+        public void Dispose()
+        {
+            throw new NotImplementedException();
+        }
+
+        public long Write(byte[] bytes)
+        {
+            throw new NotImplementedException();
+        }
+
+        public void Truncate()
+        {
+            throw new NotImplementedException();
+        }
+
+        public Task<long> WriteAsync(byte[] bytes)
+        {
+            throw new NotImplementedException();
+        }
+
+        public void Flush()
+        {
+            throw new NotImplementedException();
+        }
+
+        public void MoveTo(long offset)
+        {
+            throw new NotImplementedException();
+        }
+
+        public int Read(byte[] buffer, int offset, int length)
+        {
+            throw new NotImplementedException();
+        }
+
+        public IBinaryReader GetBinaryReader()
+        {
+            throw new NotImplementedException();
+        }
+
+        public void SetLength(long length)
+        {
+            throw new NotImplementedException();
+        }
+
+        public void SetPosition(long position)
+        {
+            throw new NotImplementedException();
+        }
+
+        public int ReadInt32()
+        {
+            throw new NotImplementedException();
+        }
+
+        public byte ReadByte()
+        {
+            throw new NotImplementedException();
+        }
+
+        public byte[] ReadBytes(int count)
+        {
+            throw new NotImplementedException();
+        }
+
+        public long GetLength()
+        {
+            throw new NotImplementedException();
+        }
+
+        public long GetPosition()
+        {
+            throw new NotImplementedException();
+        }
+
+        public long ReadInt64()
         {
             throw new NotImplementedException();
         }

@@ -98,11 +98,14 @@ namespace DiskQueue.Implementation
 
         public void DeleteRecursive(string path)
         {
-	        if (Path.GetPathRoot(path) == Path.GetFullPath(path)) throw new Exception("Request to delete root directory rejected");
-	        if (string.IsNullOrWhiteSpace(Path.GetDirectoryName(path)!)) throw new Exception("Request to delete root directory rejected");
-	        if (File.Exists(path)) throw new Exception("Tried to recursively delete a single file.");
-	        
-	        Directory.Delete(path, true);
+	        lock (_lock)
+	        {
+		        if (Path.GetPathRoot(path) == Path.GetFullPath(path)) throw new Exception("Request to delete root directory rejected");
+		        if (string.IsNullOrWhiteSpace(Path.GetDirectoryName(path)!)) throw new Exception("Request to delete root directory rejected");
+		        if (File.Exists(path)) throw new Exception("Tried to recursively delete a single file.");
+
+		        Directory.Delete(path, true);
+	        }
         }
 
         public Maybe<ILockFile> CreateLockFile(string path)
@@ -143,7 +146,7 @@ namespace DiskQueue.Implementation
         {
             lock (_lock)
             {
-	            for (int i = 0; i < RetryLimit; i++)
+	            for (var i = 0; i < RetryLimit; i++)
 	            {
 		            try
 		            {
@@ -191,7 +194,7 @@ namespace DiskQueue.Implementation
 			        dataFilePath,
 			        FileMode.OpenOrCreate,
 			        FileAccess.Write,
-			        FileShare.ReadWrite,
+			        FileShare.None,
 			        0x10000,
 			        FileOptions.Asynchronous | FileOptions.SequentialScan | FileOptions.WriteThrough);
 
@@ -202,7 +205,7 @@ namespace DiskQueue.Implementation
 
         public void AtomicRead(string path, Action<IBinaryReader> action)
         {
-	        for (int i = 1; i <= RetryLimit; i++)
+	        for (var i = 1; i <= RetryLimit; i++)
 	        {
 		        try
 		        {
@@ -228,7 +231,7 @@ namespace DiskQueue.Implementation
 
         public void AtomicWrite(string path, Action<IBinaryWriter> action)
         {
-	        for (int i = 1; i <= RetryLimit; i++)
+	        for (var i = 1; i <= RetryLimit; i++)
 	        {
 		        try
 		        {
@@ -318,7 +321,7 @@ namespace DiskQueue.Implementation
 
 		private bool WaitDelete(string s)
 		{
-			for (int i = 0; i < RetryLimit; i++)
+			for (var i = 0; i < RetryLimit; i++)
 			{
 				try
 				{

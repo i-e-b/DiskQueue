@@ -16,7 +16,7 @@ namespace DiskQueue.Tests
         [Test]
         public void mini_test_delete_me()
         {
-            const string path = @"C:\Temp\minitest3.dat";
+            const string path = @"C:\Temp\minitest4.dat";
             if (!File.Exists(path)) File.WriteAllBytes(path, new byte[4]);
             
             var b1 = File.ReadAllBytes(path);
@@ -24,16 +24,25 @@ namespace DiskQueue.Tests
             Console.WriteLine($"v@1={v1}");
 
             //using (var mmf1 = MemoryMappedFile.CreateFromFile(path, FileMode.Open, null, 8)) // will grow file if needed
-            using (var mmf1 = MemoryMappedFile.CreateFromFile(path, FileMode.Open)) // will grow file if needed
+            using (var mmf1 = MemoryMappedFile.CreateFromFile(path, FileMode.Open, null, 100))
             {
-                using var accessor2 = mmf1.CreateViewStream();
-                Console.WriteLine($"pre pos={accessor2.Position}");
+                /*
+                using var accessor2 = mmf1.CreateViewStream(); // length is 4096, a memory page?
+                
+                Console.WriteLine($"pre pos={accessor2.Position}, len={accessor2.Length}");
+               // accessor2.SetLength(Math.Max(accessor2.Length);
                 accessor2.Write(new byte[]{1,2,3,4,5,6}); // this truncates if file is not long enough
-                Console.WriteLine($"post pos={accessor2.Position}");
+                Console.WriteLine($"post pos={accessor2.Position}, len={accessor2.Length}");
                 accessor2.Write(new byte[]{1,2,3,4,5,6}); // this truncates if file is not long enough
-                Console.WriteLine($"post pos2={accessor2.Position}"); // just keeps on writing into empty space
+                Console.WriteLine($"post pos2={accessor2.Position}, len={accessor2.Length}"); // just keeps on writing into empty space
                 accessor2.Flush();
-                /*using var accessor1 = mmf1.CreateViewAccessor(offset: 0, size: 8); // must be less or equal to file size
+                
+                
+                accessor2.SetLength(8192); // System.NotSupportedException : MemoryMappedViewStreams are fixed length.
+                accessor2.Seek(4094, SeekOrigin.Begin);
+                accessor2.Write(new byte[]{1,2,3,4,5,6}); // System.NotSupportedException : Unable to expand length of this stream beyond its capacity.
+                */
+                using var accessor1 = mmf1.CreateViewAccessor(offset: 0, size: 8); // must be less or equal to file size
 
                 var ptr = accessor1.SafeMemoryMappedViewHandle.DangerousGetHandle();
                 unsafe
@@ -50,7 +59,6 @@ namespace DiskQueue.Tests
 
                 var value = accessor1.ReadInt32(0);
                 Console.WriteLine($"Value={value}");
-                */
             }
 
             b1 = File.ReadAllBytes(path);
