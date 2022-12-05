@@ -324,11 +324,7 @@ namespace DiskQueue.Implementation
 		{
 			lock (_lock)
 			{
-				if (FileExists(path + ".old_copy"))
-				{
-					if (WaitDelete(path))
-						Move(path + ".old_copy", path);
-				}
+				if (FileExists(path + ".old_copy")) WaitDelete(path);
 
 				using var stream = new FileStream(path,
 					FileMode.OpenOrCreate,
@@ -386,7 +382,7 @@ namespace DiskQueue.Implementation
 			stream.Flush();
 		}
 
-		private bool WaitDelete(string s)
+		private void WaitDelete(string s)
 		{
 			for (var i = 0; i < RetryLimit; i++)
 			{
@@ -398,14 +394,13 @@ namespace DiskQueue.Implementation
 						Finalise();
 					}
 
-					return true;
+					return;
 				}
 				catch
 				{
 					Thread.Sleep(100);
 				}
 			}
-			return false;
 		}
     }
 
