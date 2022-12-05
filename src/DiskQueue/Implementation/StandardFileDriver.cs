@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Threading;
 
@@ -76,13 +77,71 @@ namespace DiskQueue.Implementation
         {
             lock (_lock)
             {
-                var lockStream = new FileStream(path,
-                    FileMode.Create,
-                    FileAccess.ReadWrite,
-                    FileShare.None);
-                
-                return new LockFile(lockStream, path);
+	            var thisProcess = Process.GetCurrentProcess().Id;
+	            var thisThreadId = Identify.Thread();
+	            var keyBytes = BitConverter.GetBytes(thisThreadId);
+
+	            if (!File.Exists(path)) File.WriteAllBytes(path, keyBytes);
+	            var lockBytes = File.ReadAllBytes(path); // will throw if OS considers the file locked
+
+	            var lockFileThreadId = BitConverter.ToInt64(lockBytes, 0);
+	            if (lockFileThreadId != thisThreadId)
+	            {
+		            // The first two *should not* happen, but filesystems seem to have weird bugs.
+		            // Is this for our own process?
+		            var lockingProcess = (int)(lockFileThreadId & 0xFFFF_FFFF);
+		            if (lockingProcess == thisProcess)
+		            {
+			            var threadId = (int)(thisThreadId >> 32);
+			            throw new Exception($"This queue is locked by another thread in this process. Thread id = {threadId}");
+		            }
+
+		            // Is it for a running process?
+		            if (IsRunning(lockingProcess))
+		            {
+			            throw new Exception($"This queue is locked by another running process. Process id = {lockingProcess}");
+		            }
+
+		            // We have a lock from a dead process. Kill it.
+		            File.Delete(path);
+		            File.WriteAllBytes(path, keyBytes);
+	            }
+
+	            var lockStream = new FileStream(path,
+		            FileMode.Create,
+		            FileAccess.ReadWrite,
+		            FileShare.None);
+
+	            lockStream.Write(keyBytes, 0, keyBytes.Length);
+	            lockStream.Flush(true);
+
+	            return new LockFile(lockStream, path);
             }
+        }
+        
+
+        /// <summary>
+        /// Return true if the processId matches a running process
+        /// </summary>
+        private static bool IsRunning(int processId)
+        {
+	        try
+	        {
+		        Process.GetProcessById(processId);
+		        return true;
+	        }
+	        catch (InvalidOperationException)
+	        {
+		        return false;
+	        }
+	        catch (ArgumentException)
+	        {
+		        return false;
+	        }
+	        catch
+	        {
+		        return true;
+	        }
         }
 
         /// <summary>
@@ -194,7 +253,7 @@ namespace DiskQueue.Implementation
 			        dataFilePath,
 			        FileMode.OpenOrCreate,
 			        FileAccess.Write,
-			        FileShare.None,
+			        FileShare.ReadWrite,
 			        0x10000,
 			        FileOptions.Asynchronous | FileOptions.SequentialScan | FileOptions.WriteThrough);
 
@@ -203,9 +262,9 @@ namespace DiskQueue.Implementation
 	        }
         }
 
-        public void AtomicRead(string path, Action<IBinaryReader> action)
+        public bool AtomicRead(string path, Action<IBinaryReader> action)
         {
-	        for (var i = 1; i <= RetryLimit; i++)
+	        for (int i = 1; i <= RetryLimit; i++)
 	        {
 		        try
 		        {
@@ -214,24 +273,29 @@ namespace DiskQueue.Implementation
 				        var wrapper = new FileStreamWrapper(fileStream);
 				        action(wrapper);
 			        });
-			        return;
+			        return true;
 		        }
 		        catch (UnrecoverableException)
 		        {
 			        throw;
 		        }
-		        catch (Exception ex)
+		        catch (Exception)
 		        {
-			        Console.WriteLine($"Atomic read failed: {ex}");
-			        if (i >= RetryLimit) throw;
+			        if (i >= RetryLimit)
+			        {
+				        PersistentQueue.Log("Exceeded retry limit during read");
+				        return false;
+			        }
+
 			        Thread.Sleep(i * 100);
 		        }
 	        }
+	        return false;
         }
 
         public void AtomicWrite(string path, Action<IBinaryWriter> action)
         {
-	        for (var i = 1; i <= RetryLimit; i++)
+	        for (int i = 1; i <= RetryLimit; i++)
 	        {
 		        try
 		        {
@@ -241,7 +305,7 @@ namespace DiskQueue.Implementation
 			        });
 			        return;
 		        }
-		        catch
+		        catch (Exception)
 		        {
 			        if (i >= RetryLimit) throw;
 			        Thread.Sleep(i * 100);
@@ -269,7 +333,7 @@ namespace DiskQueue.Implementation
 				using var stream = new FileStream(path,
 					FileMode.OpenOrCreate,
 					FileAccess.Read,
-					FileShare.None,
+					FileShare.ReadWrite,
 					0x10000,
 					FileOptions.SequentialScan);
 				
@@ -293,11 +357,14 @@ namespace DiskQueue.Implementation
 				// rather overwrite the current file and keep it as our backup.
 				if (FileExists(path) && !FileExists(path + ".old_copy"))
 					Move(path, path + ".old_copy");
+				
+				var dir = Path.GetDirectoryName(path);
+				if (dir is not null && !DirectoryExists(dir)) CreateDirectory(dir);
 
 				using var stream = new FileStream(path,
 					FileMode.Create,
 					FileAccess.Write,
-					FileShare.None,
+					FileShare.ReadWrite,
 					0x10000,
 					FileOptions.WriteThrough | FileOptions.SequentialScan);
 				

@@ -1,5 +1,6 @@
 ﻿using System;
 using NUnit.Framework;
+// ReSharper disable AssignNullToNotNullAttribute
 
 namespace DiskQueue.Tests
 {
@@ -14,7 +15,7 @@ namespace DiskQueue.Tests
         [Test]
         public void Round_trip_value_type()
         {
-            using var queue = new PersistentQueue<int>(QueueName); 
+            using var queue = new PersistentQueue<int>(QueueName+"int"); 
             using var session = queue.OpenSession();
 
             session.Enqueue(7);
@@ -44,7 +45,7 @@ namespace DiskQueue.Tests
         [Test]
         public void Round_trip_complex_type()
         {
-            using var queue = new PersistentQueue<TestClass>(QueueName);
+            using var queue = new PersistentQueue<TestClass>(QueueName+"TC");
             using var session = queue.OpenSession();
 
             var testObject = new TestClass(7, "TestString", null);

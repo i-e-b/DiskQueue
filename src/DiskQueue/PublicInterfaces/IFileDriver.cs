@@ -124,7 +124,7 @@ namespace DiskQueue
         /// Access is optimised for sequential scanning.
         /// No file share is permitted.
         /// </summary>
-        void AtomicRead(string path, Action<IBinaryReader> action);
+        bool AtomicRead(string path, Action<IBinaryReader> action);
 
         /// <summary>
         /// Run a write action over a file by name.

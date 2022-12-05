@@ -314,7 +314,7 @@ namespace DiskQueue.Implementation
 				}
 				catch (Exception ex)
 				{
-					Console.WriteLine(ex.ToString() ?? "");
+					PersistentQueue.Log(ex.ToString() ?? "");
 					Thread.Sleep(250);
 				}
 			}
@@ -455,7 +455,7 @@ namespace DiskQueue.Implementation
 		{
 			var requireTxLogTrimming = false;
 			
-			_file.AtomicRead(TransactionLog, binaryReader =>
+			var ok = _file.AtomicRead(TransactionLog, binaryReader =>
 			{
 				bool readingTransaction = false;
 				try
@@ -505,7 +505,7 @@ namespace DiskQueue.Implementation
 					if (readingTransaction) requireTxLogTrimming = true;
 				}
 			});
-			if (requireTxLogTrimming) FlushTrimmedTransactionLog();
+			if (!ok || requireTxLogTrimming) FlushTrimmedTransactionLog();
 		}
 
 		private void FlushTrimmedTransactionLog()
@@ -692,7 +692,7 @@ namespace DiskQueue.Implementation
 
 		private void ReadMetaState()
 		{
-			_file.AtomicRead(Meta, binaryReader =>
+			var ok = _file.AtomicRead(Meta, binaryReader =>
 			{
 				try
 				{
@@ -701,9 +701,10 @@ namespace DiskQueue.Implementation
 				}
 				catch (TruncatedStreamException ex)
 				{
-					Console.WriteLine($"Truncation {ex}");
+					PersistentQueue.Log($"Truncation {ex}");
 				}
 			});
+			if (!ok) PersistentQueue.Log("Could not access meta state");
 		}
 
 		private void TrimTransactionLogIfNeeded(long txLogSize)

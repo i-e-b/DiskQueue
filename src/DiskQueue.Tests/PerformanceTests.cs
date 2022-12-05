@@ -12,7 +12,7 @@ namespace DiskQueue.Tests
 	[TestFixture, Explicit, SingleThreaded]
 	public class PerformanceTests : PersistentQueueTestsBase
 	{
-		protected override string Path => "./PerformanceTests";
+		protected override string Path => "PerformanceTests";
 
 		[Test, Description(
 			"With a mid-range SSD, this is some 20x slower " +

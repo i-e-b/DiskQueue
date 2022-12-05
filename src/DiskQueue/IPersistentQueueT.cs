@@ -1,6 +1,4 @@
-﻿using System;
-
-namespace DiskQueue
+﻿namespace DiskQueue
 {
 
     /// <inheritdoc />

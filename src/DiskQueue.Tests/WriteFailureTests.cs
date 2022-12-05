@@ -92,9 +92,9 @@ namespace DiskQueue.Tests
             throw new IOException("Sample OpenWriteStream error");
         }
 
-        public void AtomicRead(string path, Action<IBinaryReader> action)
+        public bool AtomicRead(string path, Action<IBinaryReader> action)
         {
-            _realDriver.AtomicRead(path, action);
+            return _realDriver.AtomicRead(path, action);
         }
 
         public void AtomicWrite(string path, Action<IBinaryWriter> action)

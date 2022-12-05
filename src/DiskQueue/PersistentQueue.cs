@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
 using System.IO;
 using System.Threading;
 using DiskQueue.Implementation;
@@ -13,12 +14,18 @@ namespace DiskQueue
 	/// <para>If you want to share the store between threads in one process, you may share the Persistent Queue and
 	/// have each thread call `OpenSession` for itself.</para>
 	/// </summary>
+	[SuppressMessage("ReSharper", "UnusedMember.Global")]
 	public class PersistentQueue : IPersistentQueue
 	{
 		/// <summary>
 		/// The queue implementation instance, or null if not connected
 		/// </summary>
 		protected IPersistentQueueImpl? Queue;
+
+		/// <summary>
+		/// Logging action for non-critical faults. Defaults to Console.WriteLine.
+		/// </summary>
+		public static Action<string> Log { get; set; } = Console.WriteLine;
 
 		/// <summary>
 		/// Wait a maximum time to open an exclusive session.
@@ -45,7 +52,7 @@ namespace DiskQueue
 					}
 					catch (PlatformNotSupportedException ex)
 					{
-						Console.WriteLine("Blocked by " + ex.GetType()?.Name + "; " + ex.Message + Environment.NewLine + Environment.NewLine + ex.StackTrace);
+						Log("Blocked by " + ex.GetType()?.Name + "; " + ex.Message + Environment.NewLine + Environment.NewLine + ex.StackTrace);
 						throw;
 					}
 					catch
@@ -86,7 +93,7 @@ namespace DiskQueue
 					}
 					catch (PlatformNotSupportedException ex)
 					{
-						Console.WriteLine("Blocked by " + ex.GetType()?.Name + "; " + ex.Message + Environment.NewLine + Environment.NewLine + ex.StackTrace);
+						Log("Blocked by " + ex.GetType()?.Name + "; " + ex.Message + Environment.NewLine + Environment.NewLine + ex.StackTrace);
 						throw;
 					}
 					catch
@@ -132,7 +139,7 @@ namespace DiskQueue
 		/// <summary>
 		/// Close this queue connection. Does not destroy flushed data.
 		/// </summary>
-		[System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Usage", "CA2213:DisposableFieldsShouldBeDisposed", MessageId = "_queue", Justification = "Disposed in an interlock")]
+		[SuppressMessage("Microsoft.Usage", "CA2213:DisposableFieldsShouldBeDisposed", MessageId = "_queue", Justification = "Disposed in an interlock")]
 		public void Dispose()
 		{
 			var local = Interlocked.Exchange(ref Queue, null);
