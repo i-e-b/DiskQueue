@@ -29,11 +29,17 @@ namespace DiskQueue.Tests
         [TestCase("")]
         [TestCase(" Leading Spaces")]
         [TestCase("Trailing Spaces   ")]
+        [TestCase("A string longer than the others but still quite short")]
+        [TestCase("other \r\n\t\b characters")]
         public void Round_trip_string_type(string valueToTest)
         {
             // Use different queue for each test case so that we don't get errors when running tests concurrently.
-            using var queue = new PersistentQueue<string>($"./GenericQueueTests3{valueToTest.Trim()}");
+            var hash = valueToTest.GetHashCode().ToString("X8");
+            using var queue = new PersistentQueue<string>($"./GenericQueueTests3{hash}");
             using var session = queue.OpenSession();
+
+            while (session.Dequeue() != null) { Console.WriteLine("Removing old data"); }
+            session.Flush();
 
             session.Enqueue(valueToTest);
             session.Flush();
@@ -47,7 +53,7 @@ namespace DiskQueue.Tests
         {
             using var queue = new PersistentQueue<TestClass>(QueueName+"TC");
             using var session = queue.OpenSession();
-
+            
             var testObject = new TestClass(7, "TestString", null);
             session.Enqueue(testObject);
             session.Flush();

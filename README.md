@@ -38,6 +38,8 @@ use your own serializer (e.g Json.NET).
 Use `new PersistentQueue<T>(...)` in place of `new PersistentQueue(...)`
 or `PersistentQueue.WaitFor<T>(...)` in place of `PersistentQueue.WaitFor(...)` in any of the examples below.
 
+Note: `BinaryFormatter` was removed from the default serializer. See https://learn.microsoft.com/en-us/dotnet/standard/serialization/binaryformatter-security-guide.
+Thanks to https://github.com/nikryden for alerting me to this.
 
 Example
 -------

@@ -1,17 +1,30 @@
-﻿using System.IO;
-using System.Runtime.Serialization.Formatters.Binary;
+﻿using System;
+using System.IO;
+using System.Runtime.Serialization;
+using System.Text;
 
 namespace DiskQueue.Implementation
 {
     /// <summary>
-    /// This class performs basic binary serialization from objects of Type T to byte arrays suitable for use in DiskQueue sessions.
-    /// </summary>
-    /// <remarks>
+    /// This class performs basic serialization from objects of Type T to byte arrays suitable for use in DiskQueue sessions.
+    /// <p></p>
+    /// Due to the constraints of supporting a wide range of target runtimes, this serializer is very primitive.
     /// You are free to implement your own <see cref="ISerializationStrategy{T}"/> and inject it into <see cref="PersistentQueue{T}"/>.
-    /// </remarks>
-    /// <typeparam name="T"></typeparam>
+    /// </summary>
+    /// <typeparam name="T">Type to be stored and retrieved. It must be either [Serializable] or a primitive type</typeparam>
     internal class DefaultSerializationStrategy<T> : ISerializationStrategy<T>
     {
+        private readonly DataContractSerializer _serialiser;
+
+        public DefaultSerializationStrategy()
+        {
+            var set = new DataContractSerializerSettings{
+                PreserveObjectReferences = true,
+                SerializeReadOnlyTypes = true
+            };
+            _serialiser = new DataContractSerializer(typeof(T), set);
+        }
+        
         /// <inheritdoc />
         public T? Deserialize(byte[]? bytes)
         {
@@ -19,10 +32,13 @@ namespace DiskQueue.Implementation
             {
                 return default;
             }
+            
+            if (typeof(T) == typeof(string)) return (T)((object)Encoding.UTF8.GetString(bytes));
 
-            BinaryFormatter bf = new();
+            Console.WriteLine(Encoding.UTF8.GetString(bytes));
+            
             using MemoryStream ms = new(bytes);
-            object obj = bf.Deserialize(ms);
+            var obj = _serialiser.ReadObject(ms);
             return (T)obj;
         }
 
@@ -33,10 +49,11 @@ namespace DiskQueue.Implementation
             {
                 return null;
             }
+            
+            if (typeof(T) == typeof(string)) return Encoding.UTF8.GetBytes(obj.ToString() ?? string.Empty);
 
-            BinaryFormatter bf = new();
             using MemoryStream ms = new();
-            bf.Serialize(ms, obj);
+            _serialiser.WriteObject(ms, obj);
             return ms.ToArray();
         }
     }
