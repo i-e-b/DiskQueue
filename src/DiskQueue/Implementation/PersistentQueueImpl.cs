@@ -52,6 +52,7 @@ namespace DiskQueue.Implementation
 		private ILockFile? _fileLock;
 
 		public int SuggestedReadBuffer { get; set; }
+		// ReSharper disable once MemberCanBeProtected.Global
 		public int SuggestedWriteBuffer { get; set; }
 		public long SuggestedMaxTransactionLogSize { get; set; }
 		
@@ -65,6 +66,7 @@ namespace DiskQueue.Implementation
 		/// </summary>
 		public bool ParanoidFlushing { get; set; }
 		public bool AllowTruncatedEntries { get; set; }
+		// ReSharper disable once MemberCanBeProtected.Global
 		public int FileTimeoutMilliseconds { get; set; }
 		
 		
@@ -467,8 +469,12 @@ namespace DiskQueue.Implementation
 						// this code ensures that we read the full transaction
 						// before we start to apply it. The last truncated transaction will be
 						// ignored automatically.
-						AssertTransactionSeparator(binaryReader, txCount, Marker.StartTransaction,
-							() => readingTransaction = true);
+						var state = AssertTransactionSeparator(binaryReader, txCount, Marker.StartTransaction, () => readingTransaction = true);
+						if (state == SeparatorState.Missing)
+						{
+							if (readingTransaction) requireTxLogTrimming = true;
+							return;
+						}
 
 						var opsCount = binaryReader.ReadInt32();
 						var txOps = new List<Operation>(opsCount);
@@ -490,15 +496,16 @@ namespace DiskQueue.Implementation
 						}
 
 						// check that the end marker is in place
-						AssertTransactionSeparator(binaryReader, txCount, Marker.EndTransaction, () => { });
+						state = AssertTransactionSeparator(binaryReader, txCount, Marker.EndTransaction, () => { });
+						if (state == SeparatorState.Missing)
+						{
+							if (readingTransaction) requireTxLogTrimming = true;
+							return;
+						}
+						
 						readingTransaction = false;
 						ApplyTransactionOperations(txOps);
 					}
-				}
-				catch (TruncatedStreamException)
-				{
-					// we have a truncated transaction, need to clear that
-					if (readingTransaction) requireTxLogTrimming = true;
 				}
 				catch (EndOfStreamException)
 				{
@@ -636,20 +643,20 @@ namespace DiskQueue.Implementation
         /// If 'throwOnConflict' was set in the constructor, throw an InvalidOperationException. This will stop program flow.
         /// If not, throw an EndOfStreamException, which should result in silent data truncation.
         /// </summary>
-	    private void ThrowIfStrict(string msg)
+	    private SeparatorState ThrowIfStrict(string msg)
 	    {
 	        if (_throwOnConflict)
 	        {
 	            throw new UnrecoverableException(msg);
 	        }
 
-	        throw new TruncatedStreamException();   // silently truncate transactions
+	        return SeparatorState.Missing;   // silently truncate transactions
 	    }
 
-	    private void AssertTransactionSeparator(IBinaryReader binaryReader, int txCount, Marker whichSeparator, Action hasData)
+	    private SeparatorState AssertTransactionSeparator(IBinaryReader binaryReader, int txCount, Marker whichSeparator, Action hasData)
 		{
 			var bytes = binaryReader.ReadBytes(16);
-			if (bytes.Length == 0) throw new TruncatedStreamException();
+			if (bytes.Length == 0) return SeparatorState.Missing;
 
 			hasData();
 			if (bytes.Length != 16)
@@ -658,7 +665,7 @@ namespace DiskQueue.Implementation
 				// say that we run into end of stream and let the log trimming to deal with this
 				if (binaryReader.GetLength() == binaryReader.GetPosition())
 				{
-					throw new TruncatedStreamException();
+					return SeparatorState.Missing;
 				}
 			    ThrowIfStrict("Unexpected data in transaction log. Expected to get transaction separator but got truncated data. Tx #" + txCount);
 			}
@@ -684,13 +691,19 @@ namespace DiskQueue.Implementation
 		    {
 		        if (separator == otherValue) // found a marker, but of the wrong type
 		        {
-		            ThrowIfStrict("Unexpected data in transaction log. Expected " + whichSeparator + " but found " + otherSeparator);
+		            return ThrowIfStrict("Unexpected data in transaction log. Expected " + whichSeparator + " but found " + otherSeparator);
                 }
-		        ThrowIfStrict("Unexpected data in transaction log. Expected to get transaction separator but got unknown data. Tx #" + txCount);
+		        return ThrowIfStrict("Unexpected data in transaction log. Expected to get transaction separator but got unknown data. Tx #" + txCount);
 		    }
+		    return SeparatorState.Present;
 		}
 
-		private void ReadMetaState()
+	    private enum SeparatorState
+	    {
+		    Present, Missing
+	    }
+
+	    private void ReadMetaState()
 		{
 			var ok = _file.AtomicRead(Meta, binaryReader =>
 			{
@@ -699,7 +712,7 @@ namespace DiskQueue.Implementation
 					CurrentFileNumber = binaryReader.ReadInt32();
 					CurrentFilePosition = binaryReader.ReadInt64();
 				}
-				catch (TruncatedStreamException ex)
+				catch (EndOfStreamException ex)
 				{
 					PersistentQueue.Log($"Truncation {ex}");
 				}
@@ -792,10 +805,6 @@ namespace DiskQueue.Implementation
 				else Dispose();
 			}
 		}
-	}
-
-	internal class TruncatedStreamException : Exception
-	{
 	}
 	
 	/// <summary>
