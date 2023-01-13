@@ -3,10 +3,7 @@
     /// <inheritdoc cref="IPersistentQueueSession{T}"/>
     public class PersistentQueueSession<T> : PersistentQueueSession, IPersistentQueueSession<T>
     {
-        /// <summary>
-        /// This class performs the serialization of the object to be queued into a byte array suitable for queueing.
-        /// It defaults to <see cref="DefaultSerializationStrategy{T}"/>, but you are free to implement your own and inject it in.
-        /// </summary>
+        /// <inheritdoc cref="IPersistentQueueSession{T}"/>
         public ISerializationStrategy<T> SerializationStrategy { get; set; } = new DefaultSerializationStrategy<T>();
 
         /// <inheritdoc cref="IPersistentQueueSession{T}"/>
