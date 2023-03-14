@@ -24,14 +24,14 @@ namespace DiskQueue.Tests
             var fileStream = new FileStreamWrapper(limitedSizeStream);
             var queueStub = PersistentQueueWithMemoryStream(fileStream);
 
-            var pendingWriteException = Assert.Throws<PendingWriteException>(() =>
+            var pendingWriteException = Assert.Throws<AggregateException>(() =>
             {
                 using var session = new PersistentQueueSession(queueStub, fileStream, 1024 * 1024, 1000);
                 session.Enqueue(new byte[64 * 1024 * 1024 + 1]);
                 session.Flush();
             });
 
-            Assert.That(pendingWriteException.Message, Is.EqualTo("Error during pending writes:" + Environment.NewLine + " - Memory stream is not expandable."));
+            Assert.That(pendingWriteException.Message, Is.EqualTo("One or more errors occurred. (Error during pending writes:" + Environment.NewLine + " - Memory stream is not expandable.)"));
         }
 
         [Test]

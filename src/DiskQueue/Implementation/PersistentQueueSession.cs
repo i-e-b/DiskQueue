@@ -146,9 +146,11 @@ namespace DiskQueue.Implementation
 		/// </summary>
 		public void Flush()
 		{
+			var fails = new List<Exception>();
+			WaitForPendingWrites(fails);
+			
 			try
 			{
-				WaitForPendingWrites();
 				SyncFlushBuffer();
 			}
 			finally
@@ -158,14 +160,21 @@ namespace DiskQueue.Implementation
 					stream.Flush();
 					stream.Dispose();
 				}
+
 				_streamsToDisposeOnFlush.Clear();
 			}
+
+			if (fails.Count > 0)
+			{
+				throw new AggregateException(fails);
+			}
+
 			_currentStream.Flush();
 			_queue.CommitTransaction(_operations);
 			_operations.Clear();
 		}
 
-		private void WaitForPendingWrites()
+		private void WaitForPendingWrites(List<Exception> exceptions)
 		{
 			var timeoutCount = 0;
 			var total = _pendingWritesHandles.Count;
@@ -182,14 +191,17 @@ namespace DiskQueue.Implementation
 				
 				foreach (var handle in handles)
 				{
-					handle.Close();
+					try {
+						handle.Close();   // virtual
+						handle.Dispose(); // always base class
+					} catch {/* ignore */ }
 				}
 			}
-			AssertNoPendingWritesFailures();
-			if (timeoutCount > 0) throw new Exception($"File system async operations are timing out: {timeoutCount} of {total}");
+			AssertNoPendingWritesFailures(exceptions);
+			if (timeoutCount > 0) exceptions.Add(new Exception($"File system async operations are timing out: {timeoutCount} of {total}"));
 		}
 
-		private void AssertNoPendingWritesFailures()
+		private void AssertNoPendingWritesFailures(List<Exception> exceptions)
 		{
 			lock (_pendingWritesFailures)
 			{
@@ -198,7 +210,7 @@ namespace DiskQueue.Implementation
 
 				var array = _pendingWritesFailures.ToArray();
 				_pendingWritesFailures.Clear();
-				throw new PendingWriteException(array);
+				exceptions.Add(new PendingWriteException(array));
 			}
 		}
 
