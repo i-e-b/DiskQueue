@@ -223,6 +223,16 @@ namespace DiskQueue
 		{
 			/// <summary>
 			/// Initial setting: false
+			/// <p>This setting allows sharing of the queue file across multiple processes and users. You
+			/// will probably want to set this to <c>true</c> if you are synchronising across containers
+			/// or are using network storage.</p>
+			/// <p>If true, files that are created will be given read/write access for all users</p>
+			/// <p>If false, files that are created will be left at default permissions of the running process</p>
+			/// </summary>
+			public static bool SetFilePermissions { get; set; } = false;
+			
+			/// <summary>
+			/// Initial setting: false
 			/// <para>Setting this to true will prevent some file-system level errors from stopping the queue.</para>
 			/// <para>Only use this if uptime is more important than correctness of data</para>
 			/// </summary>

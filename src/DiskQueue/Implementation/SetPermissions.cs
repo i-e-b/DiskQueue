@@ -24,21 +24,11 @@ namespace DiskQueue.Implementation
 		}
 
 		/// <summary>
-		/// Set read-write access for all users, or throw an exception
-		/// if not possible
-		/// </summary>
-		public static void AllowReadWriteForAll(string path)
-		{
-			if (Directory.Exists(path)) Directory_RWX_all(path);
-			else if (File.Exists(path)) File_RWX_all(path);
-			else throw new UnauthorizedAccessException("Can't access the path \"" + path + "\"");
-		}
-
-		/// <summary>
 		/// Set read-write access for all users, or ignore if not possible
 		/// </summary>
 		public static void TryAllowReadWriteForAll(string path)
 		{
+			if ( ! PersistentQueue.DefaultSettings.SetFilePermissions) return;
 			try
 			{
 				if (Directory.Exists(path)) Directory_RWX_all(path);
@@ -62,6 +52,7 @@ namespace DiskQueue.Implementation
 			{
                 var fileSecurity = new FileSecurity(path, AccessControlSections.All);
 				var everyone = new SecurityIdentifier(WellKnownSidType.WorldSid, null!);
+				
                 fileSecurity.SetAccessRule(new FileSystemAccessRule(everyone, FileSystemRights.Modify | FileSystemRights.Synchronize, InheritanceFlags.None, PropagationFlags.None, AccessControlType.Allow));
 
                 new FileInfo(path).SetAccessControl(fileSecurity);
