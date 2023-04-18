@@ -10,7 +10,7 @@ namespace DiskQueue
 	/// <summary>
 	/// Default persistent queue <see cref="IPersistentQueue"/>
 	/// <para>This queue establishes exclusive use of the storage until it is disposed.</para>
-	/// <para>If you wish to share the store between processes, you should use `PersistentQueue.<see cref="WaitFor"/>`.</para>
+	/// <para>If you wish to share the store between processes, you should use <see cref="WaitFor(string,System.TimeSpan)"/> or <see cref="WaitFor{T}(string,System.TimeSpan)"/>.</para>
 	/// <para>If you want to share the store between threads in one process, you may share the Persistent Queue and
 	/// have each thread call `OpenSession` for itself.</para>
 	/// </summary>
@@ -27,14 +27,7 @@ namespace DiskQueue
 		/// </summary>
 		public static Action<string> Log { get; set; } = Console.WriteLine;
 
-		/// <summary>
-		/// Wait a maximum time to open an exclusive session.
-		/// <para>If sharing storage between processes, the resulting queue should disposed
-		/// as soon as possible.</para>
-		/// <para>Throws a TimeoutException if the queue can't be locked in the specified time</para>
-		/// </summary>
-		/// <exception cref="TimeoutException"></exception>
-		public static IPersistentQueue WaitFor(string storagePath, TimeSpan maxWait)
+		private static T WaitFor<T>(Func<T> generator, TimeSpan maxWait, string lockName)
 		{
 			var sw = new Stopwatch();
 			try
@@ -44,7 +37,7 @@ namespace DiskQueue
 				{
 					try
 					{
-						return new PersistentQueue(storagePath);
+						return generator();
 					}
 					catch (DirectoryNotFoundException)
 					{
@@ -65,7 +58,53 @@ namespace DiskQueue
 			{
 				sw.Stop();
 			}
-			throw new TimeoutException($"Could not acquire a lock on '{storagePath}' in the time specified");
+			throw new TimeoutException($"Could not acquire a lock on '{lockName}' in the time specified");
+		}
+
+		/// <summary>
+		/// Wait a maximum time to open an exclusive session.
+		/// The queue is opened with default max file size (32MiB) and conflicts set to throw exceptions.
+		/// <para>If sharing storage between processes, the resulting queue should disposed
+		/// as soon as possible.</para>
+		/// <para>Throws a TimeoutException if the queue can't be locked in the specified time</para>
+		/// </summary>
+		/// <exception cref="TimeoutException">Lock on file could not be acquired</exception>
+		/// <param name="storagePath">Directory path for queue storage. This will be created if it doesn't already exist</param>
+		/// <param name="maxWait">If the storage path can't be locked within this time, a TimeoutException will be thrown</param>
+		public static IPersistentQueue WaitFor(string storagePath, TimeSpan maxWait)
+		{
+			return WaitFor(()=> new PersistentQueue(storagePath), maxWait, storagePath);
+		}
+
+		/// <summary>
+		/// Wait a maximum time to open an exclusive session.
+		/// <para>If sharing storage between processes, the resulting queue should disposed
+		/// as soon as possible.</para>
+		/// <para>Throws a TimeoutException if the queue can't be locked in the specified time</para>
+		/// </summary>
+		/// <exception cref="TimeoutException">Lock on file could not be acquired</exception>
+		/// <param name="storagePath">Directory path for queue storage. This will be created if it doesn't already exist</param>
+		/// <param name="throwOnConflict">When true, if data files are damaged, throw an InvalidOperationException. This will stop program flow.
+		/// When false, damaged data files should result in silent data truncation</param>
+		/// <param name="maxWait">If the storage path can't be locked within this time, a TimeoutException will be thrown</param>
+		/// <param name="maxSize">Maximum size in bytes for each storage file. Files will be rotated after reaching this limit.
+		/// The entire queue is NOT limited by this value.</param>
+		public static IPersistentQueue WaitFor(string storagePath, int maxSize, bool throwOnConflict, TimeSpan maxWait)
+		{
+			return WaitFor(()=> new PersistentQueue(storagePath, maxSize, throwOnConflict), maxWait, storagePath);
+		}
+		
+		/// <summary>
+		/// Wait a maximum time to open an exclusive session.
+		/// The queue is opened with default max file size (32MiB) and conflicts set to throw exceptions.
+		/// <para>If sharing storage between processes, the resulting queue should disposed
+		/// as soon as possible.</para>
+		/// <para>Throws a TimeoutException if the queue can't be locked in the specified time</para>
+		/// </summary>
+		/// <exception cref="TimeoutException">Lock on file could not be acquired</exception>
+		public static IPersistentQueue<T> WaitFor<T>(string storagePath, TimeSpan maxWait)
+		{
+			return WaitFor(()=> new PersistentQueue<T>(storagePath), maxWait, storagePath);
 		}
 		
 		/// <summary>
@@ -74,43 +113,20 @@ namespace DiskQueue
 		/// as soon as possible.</para>
 		/// <para>Throws a TimeoutException if the queue can't be locked in the specified time</para>
 		/// </summary>
-		/// <exception cref="TimeoutException"></exception>
-		public static IPersistentQueue<T> WaitFor<T>(string storagePath, TimeSpan maxWait)
+		/// <exception cref="TimeoutException">Lock on file could not be acquired</exception>
+		/// <param name="storagePath">Directory path for queue storage. This will be created if it doesn't already exist</param>
+		/// <param name="throwOnConflict">When true, if data files are damaged, throw an InvalidOperationException. This will stop program flow.
+		/// When false, damaged data files should result in silent data truncation</param>
+		/// <param name="maxWait">If the storage path can't be locked within this time, a TimeoutException will be thrown</param>
+		/// <param name="maxSize">Maximum size in bytes for each storage file. Files will be rotated after reaching this limit.
+		/// The entire queue is NOT limited by this value.</param>
+		public static IPersistentQueue<T> WaitFor<T>(string storagePath, int maxSize, bool throwOnConflict, TimeSpan maxWait)
 		{
-			var sw = new Stopwatch();
-			try
-			{
-				sw.Start();
-				do
-				{
-					try
-					{
-						return new PersistentQueue<T>(storagePath);
-					}
-					catch (DirectoryNotFoundException)
-					{
-						throw new Exception("Target storagePath does not exist or is not accessible");
-					}
-					catch (PlatformNotSupportedException ex)
-					{
-						Log("Blocked by " + ex.GetType()?.Name + "; " + ex.Message + Environment.NewLine + Environment.NewLine + ex.StackTrace);
-						throw;
-					}
-					catch
-					{
-						Thread.Sleep(50);
-					}
-				} while (sw.Elapsed < maxWait);
-			}
-			finally
-			{
-				sw.Stop();
-			}
-			throw new TimeoutException($"Could not acquire a lock on '{storagePath}' in the time specified");
+			return WaitFor(()=> new PersistentQueue<T>(storagePath, maxSize, throwOnConflict), maxWait, storagePath);
 		}
 
 		/// <summary>
-		/// THis constructor is only for use by derived classes.
+		/// This constructor is only for use by derived classes.
 		/// </summary>
 		protected PersistentQueue() { }
 

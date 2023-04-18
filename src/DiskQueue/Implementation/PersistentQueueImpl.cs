@@ -641,7 +641,7 @@ namespace DiskQueue.Implementation
 
         /// <summary>
         /// If 'throwOnConflict' was set in the constructor, throw an InvalidOperationException. This will stop program flow.
-        /// If not, throw an EndOfStreamException, which should result in silent data truncation.
+        /// If not, return a value which should result in silent data truncation.
         /// </summary>
 	    private SeparatorState ThrowIfStrict(string msg)
 	    {

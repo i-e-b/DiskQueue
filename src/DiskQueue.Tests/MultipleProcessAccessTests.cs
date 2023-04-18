@@ -52,7 +52,6 @@ namespace DiskQueue.Tests
             Assert.That(received.Count, Is.EqualTo(numberOfItems), "received items");
         }
 
-
         [Test]
         public void Can_access_from_multiple_queues_if_used_carefully_with_generic_container_and_serialisation()
         {
