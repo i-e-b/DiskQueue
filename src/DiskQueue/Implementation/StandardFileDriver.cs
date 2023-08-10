@@ -77,58 +77,62 @@ namespace DiskQueue.Implementation
         {
             lock (_lock)
             {
-	            var thisProcess = Process.GetCurrentProcess().Id;
-	            var thisThreadId = Identify.Thread();
-	            var keyBytes = BitConverter.GetBytes(thisThreadId);
+                var currentProcess = Process.GetCurrentProcess();
+                var currentLockData = new LockFileData
+                {
+                    ProcessId = currentProcess.Id,
+                    ThreadId = Thread.CurrentThread.ManagedThreadId,
+                    ProcessStart = GetProcessStartAsUnixTimeMs(currentProcess),
+                };
+                var keyBytes = MarshallHelper.Serialize(currentLockData);
 
-	            if (!File.Exists(path)) File.WriteAllBytes(path, keyBytes);
-	            var lockBytes = File.ReadAllBytes(path); // will throw if OS considers the file locked
+                if (!File.Exists(path)) File.WriteAllBytes(path, keyBytes);
+                var lockBytes = File.ReadAllBytes(path); // will throw if OS considers the file locked
+                var fileLockData = MarshallHelper.Deserialize<LockFileData>(lockBytes);
 
-	            var lockFileThreadId = BitConverter.ToInt64(lockBytes, 0);
-	            if (lockFileThreadId != thisThreadId)
-	            {
-		            // The first two *should not* happen, but filesystems seem to have weird bugs.
-		            // Is this for our own process?
-		            var lockingProcess = (int)(lockFileThreadId & 0xFFFF_FFFF);
-		            if (lockingProcess == thisProcess)
-		            {
-			            var threadId = (int)(thisThreadId >> 32);
-			            throw new Exception($"This queue is locked by another thread in this process. Thread id = {threadId}");
-		            }
 
-		            // Is it for a running process?
-		            if (IsRunning(lockingProcess))
-		            {
-			            throw new Exception($"This queue is locked by another running process. Process id = {lockingProcess}");
-		            }
+                if (fileLockData.ThreadId != currentLockData.ThreadId || fileLockData.ProcessId != currentLockData.ProcessId)
+                {
+                    // The first two *should not* happen, but filesystems seem to have weird bugs.
+                    // Is this for our own process?
+                    if (fileLockData.ProcessId == currentLockData.ProcessId)
+                    {
+                        throw new Exception($"This queue is locked by another thread in this process. Thread id = {fileLockData.ThreadId}");
+                    }
 
-		            // We have a lock from a dead process. Kill it.
-		            File.Delete(path);
-		            File.WriteAllBytes(path, keyBytes);
-	            }
+                    // Is it for a running process?
+                    if (IsRunning(fileLockData))
+                    {
+                        throw new Exception($"This queue is locked by another running process. Process id = {fileLockData.ProcessId}");
+                    }
 
-	            var lockStream = new FileStream(path,
-		            FileMode.Create,
-		            FileAccess.ReadWrite,
-		            FileShare.None);
+                    // We have a lock from a dead process. Kill it.
+                    File.Delete(path);
+                    File.WriteAllBytes(path, keyBytes);
+                }
 
-	            lockStream.Write(keyBytes, 0, keyBytes.Length);
-	            lockStream.Flush(true);
+                var lockStream = new FileStream(path,
+                    FileMode.Create,
+                    FileAccess.ReadWrite,
+                    FileShare.None);
 
-	            return new LockFile(lockStream, path);
+                lockStream.Write(keyBytes, 0, keyBytes.Length);
+                lockStream.Flush(true);
+
+                return new LockFile(lockStream, path);
             }
         }
-        
 
         /// <summary>
         /// Return true if the processId matches a running process
         /// </summary>
-        private static bool IsRunning(int processId)
+        private static bool IsRunning(LockFileData lockData)
         {
 	        try
 	        {
-		        Process.GetProcessById(processId);
-		        return true;
+		        var p = Process.GetProcessById(lockData.ProcessId);
+				var startTimeOffset = GetProcessStartAsUnixTimeMs(p);
+		        return startTimeOffset == lockData.ProcessStart;
 	        }
 	        catch (InvalidOperationException)
 	        {
@@ -143,6 +147,9 @@ namespace DiskQueue.Implementation
 		        return true;
 	        }
         }
+
+        private static long GetProcessStartAsUnixTimeMs(Process process)
+            => ((DateTimeOffset)process.StartTime).ToUnixTimeMilliseconds();
 
         /// <summary>
         /// Test for the existence of a file
