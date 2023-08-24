@@ -1,5 +1,4 @@
-﻿using System;
-using System.IO;
+﻿using System.IO;
 
 namespace DiskQueue.Implementation
 {
@@ -7,7 +6,7 @@ namespace DiskQueue.Implementation
     /// An inter-process lock based on a file.
     /// This is based on holding an open file stream
     /// </summary>
-    public class LockFile : ILockFile, IDisposable
+    public class LockFile : ILockFile
     {
         private readonly FileStream _stream;
         private readonly string _path;

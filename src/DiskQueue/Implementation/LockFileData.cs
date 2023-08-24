@@ -3,9 +3,11 @@
 namespace DiskQueue.Implementation
 {
     /// <summary>
-    /// struct file containing the data related to the lock file
-    /// order of fields matters, please use correct attributes if you want to rearange them
+    /// Data related to the lock file.
+    /// This is written to the lock file on disk, so order of fields matters,
+    /// Rearranging these will result in incompatible lock files.
     /// </summary>
+    [StructLayout(LayoutKind.Sequential)]
     public struct LockFileData
     {
         /// <summary>

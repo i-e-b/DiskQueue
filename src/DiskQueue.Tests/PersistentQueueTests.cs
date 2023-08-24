@@ -3,6 +3,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using DiskQueue.Implementation;
+// ReSharper disable AssignNullToNotNullAttribute
 
 // ReSharper disable PossibleNullReferenceException
 

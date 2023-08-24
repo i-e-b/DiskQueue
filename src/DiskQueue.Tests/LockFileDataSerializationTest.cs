@@ -16,10 +16,12 @@ namespace DiskQueue.Tests
                 32, 4, 0, 0, 0, 0, 0, 0
             };
 
-            var data = new LockFileData();
-            data.ProcessId = 8 + 256 * 1;
-            data.ThreadId = 16 + 256 * 2;
-            data.ProcessStart = 32 + 256 * 4;
+            var data = new LockFileData
+            {
+                ProcessId = 8 + 256 * 1,
+                ThreadId = 16 + 256 * 2,
+                ProcessStart = 32 + 256 * 4
+            };
 
             var actual = MarshallHelper.Serialize(data);
             for (var i = 0; i < expected.Length && i < actual.Length; i++)

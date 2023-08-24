@@ -1,5 +1,6 @@
 using NUnit.Framework;
 using System.IO;
+// ReSharper disable AssignNullToNotNullAttribute
 
 namespace DiskQueue.Tests
 {

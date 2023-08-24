@@ -120,39 +120,35 @@ namespace DiskQueue.Tests
 		{
 			var txLogInfo = new FileInfo(System.IO.Path.Combine(Path, "transaction.log"));
 
-			using (var queue = new PersistentQueue(Path)
+			using var queue = new PersistentQueue(Path);
+			queue.SuggestedMaxTransactionLogSize = 32; // single entry
+			queue.Internals.ParanoidFlushing = false;
+
+			using (var session = queue.OpenSession())
 			{
-				SuggestedMaxTransactionLogSize = 32 // single entry
-			})
-			{
-				queue.Internals.ParanoidFlushing = false;
-
-				using (var session = queue.OpenSession())
+				for (int j = 0; j < 20; j++)
 				{
-					for (int j = 0; j < 20; j++)
-					{
-						session.Enqueue(Guid.NewGuid().ToByteArray());
-					}
-					session.Flush();
+					session.Enqueue(Guid.NewGuid().ToByteArray());
 				}
-				// there is no way optimize here, so we should get expected size, even though it is bigger than
-				// what we suggested as the max
-				txLogInfo.Refresh();
-				long txSizeWhenOpen = txLogInfo.Length;
-
-				using (var session = queue.OpenSession())
-				{
-					for (int j = 0; j < 20; j++)
-					{
-						session.Dequeue();
-					}
-					Assert.IsNull(session.Dequeue());
-
-					session.Flush();
-				}
-				txLogInfo.Refresh();
-				Assert.Less(txLogInfo.Length, txSizeWhenOpen);
+				session.Flush();
 			}
+			// there is no way optimize here, so we should get expected size, even though it is bigger than
+			// what we suggested as the max
+			txLogInfo.Refresh();
+			long txSizeWhenOpen = txLogInfo.Length;
+
+			using (var session = queue.OpenSession())
+			{
+				for (int j = 0; j < 20; j++)
+				{
+					session.Dequeue();
+				}
+				Assert.IsNull(session.Dequeue());
+
+				session.Flush();
+			}
+			txLogInfo.Refresh();
+			Assert.Less(txLogInfo.Length, txSizeWhenOpen);
 		}
 
 		[Test]
@@ -160,12 +156,10 @@ namespace DiskQueue.Tests
 		{
 			var txLogInfo = new FileInfo(System.IO.Path.Combine(Path, "transaction.log"));
 
-			using (var queue = new PersistentQueue(Path)
+			using (var queue = new PersistentQueue(Path))
 			{
 				// avoid auto tx log trimming
-				TrimTransactionLogOnDispose = false
-			})
-			{
+				queue.TrimTransactionLogOnDispose = false;
 				queue.Internals.ParanoidFlushing = false;
 
 				using (var session = queue.OpenSession())
@@ -204,12 +198,10 @@ namespace DiskQueue.Tests
 		{
 			var txLogInfo = new FileInfo(System.IO.Path.Combine(Path, "transaction.log"));
 
-			using (var queue = new PersistentQueue(Path)
+			using (var queue = new PersistentQueue(Path))
 			{
 				// avoid auto tx log trimming
-				TrimTransactionLogOnDispose = false
-			})
-			{
+				queue.TrimTransactionLogOnDispose = false;
 				using (var session = queue.OpenSession())
 				{
 					for (int j = 0; j < 20; j++)
@@ -241,13 +233,11 @@ namespace DiskQueue.Tests
 	    {
 	        var txLogInfo = new FileInfo(System.IO.Path.Combine(Path, "transaction.log"));
 
-	        using (var queue = new PersistentQueue(Path)
+	        using (var queue = new PersistentQueue(Path))
 	        {
-	            // avoid auto tx log trimming
-	            TrimTransactionLogOnDispose = false
-	        })
-	        {
-	            using (var session = queue.OpenSession())
+		        // avoid auto tx log trimming
+		        queue.TrimTransactionLogOnDispose = false;
+		        using (var session = queue.OpenSession())
 	            {
 	                for (int j = 0; j < 20; j++)
 	                {
@@ -278,13 +268,11 @@ namespace DiskQueue.Tests
 	    {
 	        var txLogInfo = new FileInfo(System.IO.Path.Combine(Path, "transaction.log"));
 
-	        using (var queue = new PersistentQueue(Path)
+	        using (var queue = new PersistentQueue(Path))
 	        {
-	            // avoid auto tx log trimming
-	            TrimTransactionLogOnDispose = false
-	        })
-	        {
-	            using (var session = queue.OpenSession())
+		        // avoid auto tx log trimming
+		        queue.TrimTransactionLogOnDispose = false;
+		        using (var session = queue.OpenSession())
 	            {
 	                for (int j = 0; j < 20; j++)
 	                {
@@ -315,13 +303,11 @@ namespace DiskQueue.Tests
 	    [Test]
 	    public void Can_handle_transaction_with_only_zero_length_entries()
 	    {
-	        using (var queue = new PersistentQueue(Path)
+	        using (var queue = new PersistentQueue(Path))
 	        {
-	            // avoid auto tx log trimming
-	            TrimTransactionLogOnDispose = false
-	        })
-	        {
-	            using (var session = queue.OpenSession())
+		        // avoid auto tx log trimming
+		        queue.TrimTransactionLogOnDispose = false;
+		        using (var session = queue.OpenSession())
 	            {
 	                for (int j = 0; j < 20; j++)
 	                {
@@ -348,13 +334,11 @@ namespace DiskQueue.Tests
 	    [Test]
 	    public void Can_handle_end_separator_used_as_data()
 	    {
-	        using (var queue = new PersistentQueue(Path)
+	        using (var queue = new PersistentQueue(Path))
 	        {
-	            // avoid auto tx log trimming
-	            TrimTransactionLogOnDispose = false
-	        })
-            {
-                using (var session = queue.OpenSession())
+		        // avoid auto tx log trimming
+		        queue.TrimTransactionLogOnDispose = false;
+		        using (var session = queue.OpenSession())
                 {
                     for (int j = 0; j < 20; j++)
                     {
@@ -363,7 +347,7 @@ namespace DiskQueue.Tests
                     }
                     session.Flush();
                 }
-            }
+	        }
 
             using (var queue = new PersistentQueue(Path))
 	        {
@@ -378,13 +362,11 @@ namespace DiskQueue.Tests
 	    [Test]
 	    public void Can_handle_start_separator_used_as_data()
 	    {
-	        using (var queue = new PersistentQueue(Path)
+	        using (var queue = new PersistentQueue(Path))
 	        {
-	            // avoid auto tx log trimming
-	            TrimTransactionLogOnDispose = false
-	        })
-	        {
-	            using (var session = queue.OpenSession())
+		        // avoid auto tx log trimming
+		        queue.TrimTransactionLogOnDispose = false;
+		        using (var session = queue.OpenSession())
 	            {
 	                for (int j = 0; j < 20; j++)
 	                {
@@ -408,13 +390,11 @@ namespace DiskQueue.Tests
 	    [Test]
 	    public void Can_handle_zero_length_entries_at_start()
 	    {
-	        using (var queue = new PersistentQueue(Path)
+	        using (var queue = new PersistentQueue(Path))
 	        {
-	            // avoid auto tx log trimming
-	            TrimTransactionLogOnDispose = false
-	        })
-	        {
-	            using (var session = queue.OpenSession())
+		        // avoid auto tx log trimming
+		        queue.TrimTransactionLogOnDispose = false;
+		        using (var session = queue.OpenSession())
 	            {
 	                session.Enqueue(new byte[0]);
 	                session.Flush();
@@ -443,13 +423,11 @@ namespace DiskQueue.Tests
 	    [Test]
 	    public void Can_handle_zero_length_entries_at_end()
 	    {
-	        using (var queue = new PersistentQueue(Path)
+	        using (var queue = new PersistentQueue(Path))
 	        {
-	            // avoid auto tx log trimming
-	            TrimTransactionLogOnDispose = false
-	        })
-	        {
-	            using (var session = queue.OpenSession())
+		        // avoid auto tx log trimming
+		        queue.TrimTransactionLogOnDispose = false;
+		        using (var session = queue.OpenSession())
 	            {
 	                for (int j = 0; j < 19; j++)
 	                {
@@ -479,13 +457,11 @@ namespace DiskQueue.Tests
 	    {
 		    PersistentQueue.DefaultSettings.AllowTruncatedEntries = false;
 	        var txLogInfo = new FileInfo(System.IO.Path.Combine(Path, "transaction.log"));
-	        using (var queue = new PersistentQueue(Path)
+	        using (var queue = new PersistentQueue(Path))
 	        {
-	            // avoid auto tx log trimming
-	            TrimTransactionLogOnDispose = false
-	        })
-	        {
-	            using (var session = queue.OpenSession())
+		        // avoid auto tx log trimming
+		        queue.TrimTransactionLogOnDispose = false;
+		        using (var session = queue.OpenSession())
 	            {
 	                for (int j = 0; j < 5; j++)
 	                {
@@ -530,13 +506,11 @@ namespace DiskQueue.Tests
 	    public void Can_restore_data_when_a_transaction_set_is_partially_overwritten_when_throwOnConflict_is_false()
 	    {
 	        var txLogInfo = new FileInfo(System.IO.Path.Combine(Path, "transaction.log"));
-	        using (var queue = new PersistentQueue(Path)
+	        using (var queue = new PersistentQueue(Path))
 	        {
-	            // avoid auto tx log trimming
-	            TrimTransactionLogOnDispose = false
-	        })
-	        {
-	            using (var session = queue.OpenSession())
+		        // avoid auto tx log trimming
+		        queue.TrimTransactionLogOnDispose = false;
+		        using (var session = queue.OpenSession())
 	            {
 	                for (int j = 0; j < 5; j++)
 	                {
@@ -605,12 +579,10 @@ namespace DiskQueue.Tests
 		{
 			var txLogInfo = new FileInfo(System.IO.Path.Combine(Path, "transaction.log"));
 
-			using (var queue = new PersistentQueue(Path)
+			using (var queue = new PersistentQueue(Path))
 			{
 				// avoid auto tx log trimming
-				TrimTransactionLogOnDispose = false
-			})
-			{
+				queue.TrimTransactionLogOnDispose = false;
 				queue.Internals.ParanoidFlushing = false;
 				using (var session = queue.OpenSession())
 				{
@@ -628,12 +600,10 @@ namespace DiskQueue.Tests
 				txLog.Flush();
 			}
 
-			using (var queue = new PersistentQueue(Path)
+			using (var queue = new PersistentQueue(Path))
 			{
 				// avoid auto tx log trimming
-				TrimTransactionLogOnDispose = false
-			})
-			{
+				queue.TrimTransactionLogOnDispose = false;
 				using (var session = queue.OpenSession())
 				{
 					for (int j = 20; j < 40; j++)

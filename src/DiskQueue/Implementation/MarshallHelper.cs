@@ -6,7 +6,7 @@ namespace DiskQueue.Implementation
     /// <summary>
     /// Helper class used to help with serializing to bytes
     /// </summary>
-    public class MarshallHelper
+    public static class MarshallHelper
     {
         /// <summary>
         /// Serializes a structure to a byte array.
@@ -60,7 +60,7 @@ namespace DiskQueue.Implementation
             try
             {
                 pinnedPacket = GCHandle.Alloc(data, GCHandleType.Pinned);
-                result = (T)Marshal.PtrToStructure(pinnedPacket.AddrOfPinnedObject(), typeof(T));
+                result = (T)Marshal.PtrToStructure(pinnedPacket.AddrOfPinnedObject(), typeof(T)) ?? throw new Exception("Could not deserialise");
             }
             finally
             {

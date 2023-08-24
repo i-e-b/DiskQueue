@@ -32,7 +32,7 @@ namespace DiskQueue.Implementation
         public async Task<long> WriteAsync(byte[] bytes)
         {
             if (_base is null) throw new Exception("Tried to write to a disposed FileStream");
-            await _base.WriteAsync(bytes, 0, bytes.Length)!.ConfigureAwait(false)!;
+            await _base.WriteAsync(bytes, 0, bytes.Length)!.ConfigureAwait(false);
             return _base.Position;
         }
 

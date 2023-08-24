@@ -1,14 +1,9 @@
 ﻿using DiskQueue.Implementation;
 using NUnit.Framework;
 using System;
-using System.Collections;
-using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
-using System.Text;
-using System.Threading;
-using System.Threading.Tasks;
 
 namespace DiskQueue.Tests
 {
@@ -25,8 +20,8 @@ namespace DiskQueue.Tests
         public void OneTimeSetUp() 
         {
             _currentProcess = Process.GetCurrentProcess();
-            _currentThread = Thread.CurrentThread.ManagedThreadId;
-            _otherProcess = Process.GetProcesses().Where(x => x.Id != 0 && x.Id != _currentProcess.Id).First();
+            _currentThread = Environment.CurrentManagedThreadId;
+            _otherProcess = Process.GetProcesses().First(x => x.Id != 0 && x.Id != _currentProcess.Id);
         }
 
         [Test]
@@ -41,7 +36,7 @@ namespace DiskQueue.Tests
         }
 
         [Test]
-        public void FileIsLockedByCurentProcessButWrongThread_ThrowsException()
+        public void FileIsLockedByCurrentProcessButWrongThread_ThrowsException()
         {
             //ARRANGE
             var queueName = GetQueueName();
@@ -55,7 +50,7 @@ namespace DiskQueue.Tests
             catch(InvalidOperationException ex)
             {
                 //ASSERT
-                Assert.AreEqual("This queue is locked by another thread in this process. Thread id = 555", ex.InnerException.Message);
+                Assert.That(ex.InnerException?.Message, Is.EqualTo("This queue is locked by another thread in this process. Thread id = 555"));
                 Assert.Pass();
             }
             Assert.Fail();
@@ -76,7 +71,7 @@ namespace DiskQueue.Tests
             catch (InvalidOperationException ex)
             {
                 //ASSERT
-                Assert.AreEqual($"This queue is locked by another running process. Process id = {_otherProcess.Id}", ex.InnerException.Message);
+                Assert.That(ex.InnerException?.Message, Is.EqualTo($"This queue is locked by another running process. Process id = {_otherProcess.Id}"));
                 Assert.Pass();
             }
             Assert.Fail();
@@ -89,7 +84,7 @@ namespace DiskQueue.Tests
             return $"./LockQueueTests_{hash}";
         }
 
-        private void WriteLockFile(string queueName, int processId, int threadId, DateTime startTime)
+        private static void WriteLockFile(string queueName, int processId, int threadId, DateTime startTime)
         {
             var lockData = new LockFileData
             {
