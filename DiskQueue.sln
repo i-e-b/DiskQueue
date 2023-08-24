@@ -14,6 +14,8 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "_Info", "_Info", "{49D15F07
 		README.md = README.md
 	EndProjectSection
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TestDummyProcess", "TestDummyProcess\TestDummyProcess.csproj", "{0A4E9B2E-1B2F-4008-A3EB-7983DD9EDF20}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -28,6 +30,10 @@ Global
 		{9AFF54EA-63E4-43B0-BF19-D81DB5FA66A5}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{9AFF54EA-63E4-43B0-BF19-D81DB5FA66A5}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{9AFF54EA-63E4-43B0-BF19-D81DB5FA66A5}.Release|Any CPU.Build.0 = Release|Any CPU
+		{0A4E9B2E-1B2F-4008-A3EB-7983DD9EDF20}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{0A4E9B2E-1B2F-4008-A3EB-7983DD9EDF20}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{0A4E9B2E-1B2F-4008-A3EB-7983DD9EDF20}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{0A4E9B2E-1B2F-4008-A3EB-7983DD9EDF20}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

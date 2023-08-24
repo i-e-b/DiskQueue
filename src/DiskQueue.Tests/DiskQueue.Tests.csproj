@@ -15,6 +15,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\..\TestDummyProcess\TestDummyProcess.csproj" />
     <ProjectReference Include="..\DiskQueue\DiskQueue.csproj" />
   </ItemGroup>
 

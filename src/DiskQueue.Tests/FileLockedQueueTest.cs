@@ -3,17 +3,14 @@ using NUnit.Framework;
 using System;
 using System.Diagnostics;
 using System.IO;
-using System.Linq;
 
 namespace DiskQueue.Tests
 {
     [TestFixture]
     public class FileLockedQueueTest
     {
-#pragma warning disable CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider declaring as nullable.
-        private Process _otherProcess;
-        private Process _currentProcess;
-#pragma warning restore CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider declaring as nullable.
+        private Process? _otherProcess;
+        private Process? _currentProcess;
         private int _currentThread;
 
         [OneTimeSetUp]
@@ -21,7 +18,14 @@ namespace DiskQueue.Tests
         {
             _currentProcess = Process.GetCurrentProcess();
             _currentThread = Environment.CurrentManagedThreadId;
-            _otherProcess = Process.GetProcesses().First(x => x.Id != 0 && x.Id != _currentProcess.Id);
+            
+            _otherProcess = Process.Start("TestDummyProcess.exe");
+        }
+
+        [OneTimeTearDown]
+        public void OneTimeTearDown()
+        {
+            _otherProcess?.Kill();
         }
 
         [Test]
@@ -29,7 +33,7 @@ namespace DiskQueue.Tests
         {
             //ARRANGE
             var queueName = GetQueueName();
-            WriteLockFile(queueName, _otherProcess.Id, _currentThread, _otherProcess.StartTime.AddSeconds(1));
+            WriteLockFile(queueName, _otherProcess!.Id, _currentThread, _otherProcess.StartTime.AddSeconds(1));
 
             //ACT
             using var queue = new PersistentQueue<string>(queueName);
@@ -40,7 +44,7 @@ namespace DiskQueue.Tests
         {
             //ARRANGE
             var queueName = GetQueueName();
-            WriteLockFile(queueName, _currentProcess.Id, 555, _currentProcess.StartTime);
+            WriteLockFile(queueName, _currentProcess!.Id, 555, _currentProcess.StartTime);
 
             try
             {
@@ -61,7 +65,7 @@ namespace DiskQueue.Tests
         {
             //ARRANGE
             var queueName = GetQueueName();
-            WriteLockFile(queueName, _otherProcess.Id, 555, _otherProcess.StartTime);
+            WriteLockFile(queueName, _otherProcess!.Id, 555, _otherProcess.StartTime);
 
             try
             {
