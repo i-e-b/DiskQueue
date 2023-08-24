@@ -10,13 +10,22 @@ Based very heavily on  http://ayende.com/blog/3479/rhino-queues-storage-disk
 
 Requirements and Environment
 ----------------------------
-Works on .Net 4+ and Mono 2.10.8+ (3.0.6+ recommended)
+
+Works on dotnet standard 2.0 platforms
 
 Requires access to filesystem storage.
 
 The file system is used to hold locks, so any bug in your file system may cause
 issues with DiskQueue -- although it tries to work around them.
 
+Thanks to
+---------
+
+These kind folks have helped in the development of DiskQueue
+
+- Tom Halter https://github.com/thalter
+- Niklas Rydén https://github.com/nikryden
+- Stefan Dascalu https://github.com/stefandascalu64
 
 Basic Usage
 -----------
@@ -30,7 +39,7 @@ Basic Usage
    disposed of properly. Failure to do this will result in lock contention -- you will get errors that the queue
    is still in use.
    
-Thanks to Tom Halter, there is also a generic-typed `PersistentQueue<T>(...);` which will handle the serialisation and deserialization of
+There is also a generic-typed `PersistentQueue<T>(...);` which will handle the serialisation and deserialization of
 elements in the queue, as long at the type is decorated with `[Serializable]`. You can also inject your own `ISerializationStrategy<T>` 
 into your `PersistentQueueSession<T>` if you wish to have more granular control over Serialization/Deserialization, or if you wish to 
 use your own serializer (e.g Json.NET).
@@ -39,7 +48,6 @@ Use `new PersistentQueue<T>(...)` in place of `new PersistentQueue(...)`
 or `PersistentQueue.WaitFor<T>(...)` in place of `PersistentQueue.WaitFor(...)` in any of the examples below.
 
 Note: `BinaryFormatter` was removed from the default serializer. See https://learn.microsoft.com/en-us/dotnet/standard/serialization/binaryformatter-security-guide.
-Thanks to https://github.com/nikryden for alerting me to this.
 
 Example
 -------
