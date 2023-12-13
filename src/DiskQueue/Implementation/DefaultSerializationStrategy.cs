@@ -35,8 +35,6 @@ namespace DiskQueue.Implementation
             
             if (typeof(T) == typeof(string)) return (T)((object)Encoding.UTF8.GetString(bytes));
 
-            Console.WriteLine(Encoding.UTF8.GetString(bytes));
-            
             using MemoryStream ms = new(bytes);
             var obj = _serialiser.ReadObject(ms);
             return (T)obj;

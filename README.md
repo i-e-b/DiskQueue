@@ -153,6 +153,12 @@ PersistentQueue.DefaultSettings.AllowTruncatedEntries = true;
 PersistentQueue.DefaultSettings.ParanoidFlushing = true;
 ```
 
+Internal Logging
+----------------
+
+Some internal warnings and non-critical errors are logged through `PersistentQueue.Log`.
+This defaults to `System.Console.WriteLine`, but can be replace with any `Action<string>`
+
 Removing or resetting queues
 ----------------------------
 
