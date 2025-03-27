@@ -70,6 +70,21 @@ namespace DiskQueue.Tests
             Assert.IsNotNull(testObject2);
             Assert.AreEqual(testObject, testObject2);
         }
+
+        [Test]
+        public void Round_trip_DateTimeOffset()
+        {
+            using var queue   = new PersistentQueue<DateTimeOffset>(QueueName+"TC2");
+            using var session = queue.OpenSession();
+
+            var testObject = DateTimeOffset.Now;
+            session.Enqueue(testObject);
+            session.Flush();
+            var testObject2 = session.Dequeue();
+            session.Flush();
+            Assert.IsNotNull(testObject2);
+            Assert.AreEqual(testObject,testObject2);
+        }
     }
 
     /// <summary>
