@@ -18,8 +18,10 @@ namespace DiskQueue.Tests
         {
             _currentProcess = Process.GetCurrentProcess();
             _currentThread = Environment.CurrentManagedThreadId;
-            
-            _otherProcess = Process.Start("TestDummyProcess.exe");
+
+            if (File.Exists("TestDummyProcess.exe")) _otherProcess = Process.Start("TestDummyProcess.exe");
+            else if (File.Exists("TestDummyProcess")) _otherProcess = Process.Start("TestDummyProcess");
+            else Assert.Inconclusive("Can't start test process");
         }
 
         [OneTimeTearDown]
