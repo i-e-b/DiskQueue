@@ -11,9 +11,9 @@ Based very heavily on  http://ayende.com/blog/3479/rhino-queues-storage-disk
 Requirements and Environment
 ----------------------------
 
-Works on dotnet standard 2.0 platforms
-
-Requires access to filesystem storage.
+- Works on dotnet standard 2.0 platforms
+- Requires access to filesystem storage
+- Only partial support for "Trim Self-Contained" deployments and executables (see below)
 
 The file system is used to hold locks, so any bug in your file system may cause
 issues with DiskQueue -- although it tries to work around them.
@@ -216,3 +216,13 @@ acquire the lock, and dispose of the session to release it.
 
 If you need the transaction semantics of sessions across multiple processes, try a more robust solution like https://github.com/i-e-b/SevenDigital.Messaging
 
+Trim self-contained deployments and executables
+-----------------------------------------------
+
+The default serialiser for typed queues is **NOT** supported under "trimmed self-contained" projects.
+
+You can either use the raw byte-based interfaces and do your own serialisation, or create and use a custom `ISerializationStrategy<T>` for your types.
+
+See
+- https://learn.microsoft.com/en-us/dotnet/core/deploying/trimming/incompatibilities#reflection-based-serializers
+- https://github.com/i-e-b/DiskQueue/issues/35
