@@ -1,4 +1,6 @@
+using System;
 using System.Collections.Generic;
+using System.Text.Json;
 
 namespace DiskQueue.Implementation
 {
@@ -29,5 +31,25 @@ namespace DiskQueue.Implementation
 		{
 			return self.TryGetValue(key, out var value) == false ? default : value;
 		}
-	}
+
+		/// <summary>
+		/// Serializes the exception to JSON.
+		/// </summary>
+		/// <param name="ex">The exception to serialize to JSON.</param>
+		/// <returns>String representation of the exception.</returns>
+        public static string ToJson(this Exception ex)
+        {
+            if (ex == null)
+            {
+                return null!;
+            }
+
+            return JsonSerializer.Serialize(new
+            {
+                ex.Message,
+                ex.StackTrace,
+                InnerException = ex.InnerException?.ToJson()
+            });
+        }
+    }
 }
