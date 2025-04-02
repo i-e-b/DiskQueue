@@ -12,18 +12,6 @@ namespace DiskQueue.Implementation
 	public static class SetPermissions
 	{
 		/// <summary>
-		/// True if running in a Posix environment, false if Windows or unknown.
-		/// </summary>
-		public static bool RunningUnderPosix
-		{
-			get
-			{
-				var p = (int)Environment.OSVersion.Platform;
-				return (p == 4) || (p == 6) || (p == 128);
-			}
-		}
-
-		/// <summary>
 		/// Set read-write access for all users, or ignore if not possible
 		/// </summary>
 		public static void TryAllowReadWriteForAll(string path)
@@ -44,7 +32,7 @@ namespace DiskQueue.Implementation
 
 		private static void File_RWX_all(string path)
 		{
-			if (RunningUnderPosix)
+			if (!OperatingSystem.IsWindows())
 			{
 				UnsafeNativeMethods.chmod(path, UnixFilePermissions.ACCESSPERMS);
 			}
@@ -61,7 +49,7 @@ namespace DiskQueue.Implementation
 
 		private static void Directory_RWX_all(string path)
 		{
-			if (RunningUnderPosix)
+			if (!OperatingSystem.IsWindows())
 			{
 				UnsafeNativeMethods.chmod(path, UnixFilePermissions.ACCESSPERMS);
 			}
