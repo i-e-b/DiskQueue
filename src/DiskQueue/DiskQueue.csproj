@@ -1,17 +1,15 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
-
   <PropertyGroup>
-    <TargetFramework>netstandard2.0</TargetFramework>
+    <TargetFramework>net8.0</TargetFramework>
     <LangVersion>9</LangVersion>
     <Nullable>enable</Nullable>
     <PackageVersion>1.7.1</PackageVersion>
-    <AssemblyVersion>1.7.1.0</AssemblyVersion>
-    <FileVersion>1.7.1.0</FileVersion>
+    <AssemblyVersion>1.25.4.2</AssemblyVersion>
+    <FileVersion>1.25.4.2</FileVersion>
     <ApplicationVersion>1.3.2</ApplicationVersion>
     <Version>1.3.2</Version>
     <Copyright>2013-2023 Iain Ballard</Copyright>
   </PropertyGroup>
-
   <PropertyGroup Condition=" '$(Configuration)' == 'Debug' ">
     <DocumentationFile>bin\Debug\DiskQueue.xml</DocumentationFile>
     <CheckForOverflowUnderflow>true</CheckForOverflowUnderflow>
@@ -19,7 +17,6 @@
     <Optimize>false</Optimize>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
   </PropertyGroup>
-
   <PropertyGroup Condition=" '$(Configuration)' == 'Release' ">
     <CheckForOverflowUnderflow>true</CheckForOverflowUnderflow>
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
@@ -28,9 +25,4 @@
     <DebugSymbols>true</DebugSymbols>
     <DocumentationFile>bin\Release\DiskQueue.xml</DocumentationFile>
   </PropertyGroup>
-
-  <ItemGroup>
-    <PackageReference Include="System.IO.FileSystem.AccessControl" Version="4.7.0" />
-  </ItemGroup>
-
 </Project>
