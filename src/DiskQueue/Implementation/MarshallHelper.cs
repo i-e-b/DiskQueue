@@ -13,7 +13,7 @@ namespace DiskQueue.Implementation
         /// </summary>
         /// <param name="value">The structure to serialize to a byte array.</param>
         /// <returns>The object serialized to a byte array, ready to write to a stream.</returns>
-        public static byte[] Serialize<T>(T value)
+        public static byte[] Serialize<T>(T value) where T : struct
         {
             // Get the size of our structure in bytes
             var structSize = Marshal.SizeOf(value);
