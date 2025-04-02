@@ -37,6 +37,10 @@ namespace DiskQueue.Implementation
 
             using MemoryStream ms = new(bytes);
             var obj = _serialiser.ReadObject(ms);
+            if (obj == null)
+            {
+                return default;
+            }
             return (T)obj;
         }
 
