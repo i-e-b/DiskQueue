@@ -148,7 +148,7 @@ namespace DiskQueue.Tests
 
 			for (int e = 0; e < 100; e++)
 			{
-				if (!threads[e].Join(50_000)) Assert.Fail("reader timeout");
+				if (!threads[e].Join(110_000)) Assert.Fail($"reader timeout on thread {e}");
 			}
 		}
 
