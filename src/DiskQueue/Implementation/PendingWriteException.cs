@@ -25,16 +25,18 @@
 // THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 using System;
+using System.Collections.Generic;
+using System.Linq;
 using System.Runtime.Serialization;
 using System.Security.Permissions;
 using System.Text;
+using System.Text.Json;
 
 namespace DiskQueue.Implementation
 {
 	/// <summary>
 	/// Exception thrown when data can't be persisted
 	/// </summary>
-	[Serializable]
 	public class PendingWriteException : Exception
 	{
 		private readonly Exception[] _pendingWritesExceptions;
@@ -45,7 +47,7 @@ namespace DiskQueue.Implementation
 		public PendingWriteException(Exception[] pendingWritesExceptions)
 			: base("Error during pending writes")
 		{
-			_pendingWritesExceptions = pendingWritesExceptions;
+			_pendingWritesExceptions = pendingWritesExceptions ?? throw new ArgumentNullException(nameof(pendingWritesExceptions));
 		}
 
 		/// <summary>
@@ -63,7 +65,7 @@ namespace DiskQueue.Implementation
 				var sb = new StringBuilder(base.Message ?? "Error").Append(":");
 				foreach (var exception in _pendingWritesExceptions)
 				{
-					sb.AppendLine().Append(" - ").Append(exception.Message??"<unknown>");
+					sb.AppendLine().Append(" - ").Append(exception.Message ?? "<unknown>");
 				}
 				return sb.ToString();
 			}
@@ -74,7 +76,7 @@ namespace DiskQueue.Implementation
 		/// </summary>
 		public override string ToString()
 		{
-			var sb = new StringBuilder(base.Message ?? "Error").Append(":");
+			var sb = new StringBuilder(base.Message ?? "Error").Append(':');
 			foreach (var exception in _pendingWritesExceptions)
 			{
 				sb.AppendLine().Append(" - ").Append(exception);
@@ -83,13 +85,57 @@ namespace DiskQueue.Implementation
 		}
 
 		/// <summary>
-		/// Sets the <see cref="T:System.Runtime.Serialization.SerializationInfo"/> with information about the exception.
+		/// Serializes the exception to a JSON string.
 		/// </summary>
-		/// <param name="info">The <see cref="T:System.Runtime.Serialization.SerializationInfo"/> that holds the serialized object data about the exception being thrown. </param><param name="context">The <see cref="T:System.Runtime.Serialization.StreamingContext"/> that contains contextual information about the source or destination. </param><exception cref="T:System.ArgumentNullException">The <paramref name="info"/> parameter is a null reference (Nothing in Visual Basic). </exception><filterpriority>2</filterpriority><PermissionSet><IPermission class="System.Security.Permissions.FileIOPermission, mscorlib, Version=2.0.3600.0, Culture=neutral, PublicKeyToken=b77a5c561934e089" version="1" Read="*AllFiles*" PathDiscovery="*AllFiles*"/><IPermission class="System.Security.Permissions.SecurityPermission, mscorlib, Version=2.0.3600.0, Culture=neutral, PublicKeyToken=b77a5c561934e089" version="1" Flags="SerializationFormatter"/></PermissionSet>
-		public override void GetObjectData(SerializationInfo info, StreamingContext context)
-		{
-			base.GetObjectData(info, context);
-			info.AddValue("PendingWritesExceptions", PendingWritesExceptions);
-		}
-	}
+		/// <returns>String representation of the exception.</returns>
+        public string ToJson()
+        {
+            return JsonSerializer.Serialize(new
+            {
+                BaseMessage = base.Message, // Store the base message explicitly
+                PendingWritesExceptions = _pendingWritesExceptions.Select(ex => new
+                {
+                    ex.Message,
+                    ex.StackTrace,
+                    InnerException = ex.InnerException?.ToJson() // Recursive serialization
+                }).ToArray()
+            });
+        }
+
+        /// <summary>
+        /// Deserializes a JSON string back into a PendingWriteException.
+        /// </summary>
+        /// <param name="json"></param>
+        /// <returns></returns>
+        public static PendingWriteException FromJson(string json)
+        {
+            var data = JsonSerializer.Deserialize<ExceptionData>(json);
+            if (data == null)
+            {
+                throw new ArgumentException("Invalid JSON data for deserialization.", nameof(json));
+            }
+
+            var pendingExceptions = data.PendingWritesExceptions?.Select(ex =>
+            {
+                var innerEx = ex.InnerException != null ? FromJson(ex.InnerException) : null;
+                return new Exception(ex.Message) { /* StackTrace can't be set directly */ };
+            }).ToArray() ?? Array.Empty<Exception>();
+
+            return new PendingWriteException(pendingExceptions);
+        }
+
+        // Helper class for JSON structure
+        private class ExceptionData
+        {
+            public string? BaseMessage { get; set; }
+            public ExceptionDetails[]? PendingWritesExceptions { get; set; }
+        }
+
+        private class ExceptionDetails
+        {
+            public string? Message { get; set; }
+            public string? StackTrace { get; set; }
+            public string? InnerException { get; set; }
+        }
+    }
 }
