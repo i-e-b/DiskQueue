@@ -62,7 +62,7 @@ namespace DiskQueue.Implementation
 		{
 			get
 			{
-				var sb = new StringBuilder(base.Message ?? "Error").Append(":");
+				var sb = new StringBuilder(base.Message ?? "Error").Append(':');
 				foreach (var exception in _pendingWritesExceptions)
 				{
 					sb.AppendLine().Append(" - ").Append(exception.Message ?? "<unknown>");
