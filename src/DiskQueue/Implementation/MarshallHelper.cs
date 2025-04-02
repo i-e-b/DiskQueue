@@ -60,7 +60,8 @@ namespace DiskQueue.Implementation
             try
             {
                 pinnedPacket = GCHandle.Alloc(data, GCHandleType.Pinned);
-                result = (T)Marshal.PtrToStructure(pinnedPacket.AddrOfPinnedObject(), typeof(T)) ?? throw new Exception("Could not deserialise");
+                object? obj = Marshal.PtrToStructure(pinnedPacket.AddrOfPinnedObject(), typeof(T));
+                result = obj != null ? (T)obj : throw new Exception("Could not deserialise");
             }
             finally
             {
