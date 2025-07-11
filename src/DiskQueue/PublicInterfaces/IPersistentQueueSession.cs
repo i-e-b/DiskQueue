@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 
 namespace DiskQueue
 {
@@ -20,10 +21,15 @@ namespace DiskQueue
 		byte[]? Dequeue();
 
 		/// <summary>
-		/// Commit actions taken in this session since last flush.
-		/// If the session is disposed with no flush, actions are not persisted 
-		/// to the queue (Enqueues are not written, dequeues are left on the queue)
+		/// Try to pull data all from the queue. Data is not removed from the queue
 		/// </summary>
-		void Flush();
+		public List<byte[]> ToList();
+
+        /// <summary>
+        /// Commit actions taken in this session since last flush.
+        /// If the session is disposed with no flush, actions are not persisted 
+        /// to the queue (Enqueues are not written, dequeues are left on the queue)
+        /// </summary>
+        void Flush();
 	}
 }

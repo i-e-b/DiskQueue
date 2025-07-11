@@ -348,10 +348,31 @@ namespace DiskQueue.Implementation
 			}
 		}
 
-		/// <summary>
-		/// Assumes that entries has at least one entry. Should be called inside a lock.
-		/// </summary>
-		private bool ReadAhead()
+        public List<Entry> ToList()
+        {
+            lock (_entries)
+            {
+                var last = _entries.Last;
+                if (last == null) return new List<Entry>();
+
+                var entry = last.Value;
+                if (entry == null) throw new Exception("Entry queue was in an invalid state: null entry");
+
+                if (entry.Data == null)
+                {
+                    var ok = ReadAhead();
+                    if (!ok) return new List<Entry>();
+                }
+
+                var entryList = _entries.ToList();
+				return entryList;
+            }
+        }
+
+        /// <summary>
+        /// Assumes that entries has at least one entry. Should be called inside a lock.
+        /// </summary>
+        private bool ReadAhead()
 		{
 			long currentBufferSize = 0;
 			

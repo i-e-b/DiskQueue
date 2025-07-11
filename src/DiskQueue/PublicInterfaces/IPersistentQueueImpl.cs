@@ -34,6 +34,11 @@ namespace DiskQueue
 		/// </summary>
 		Entry? Dequeue();
 
+        /// <summary>
+        /// List data, returning all storage entry as list
+        /// </summary>
+        List<Entry> ToList();
+
 		/// <summary>
 		/// <para>UNSAFE. Incorrect use will result in data loss.</para>
 		/// <para>Undo Enqueue and Dequeue operations.</para>

@@ -1,4 +1,6 @@
-﻿namespace DiskQueue.Implementation
+﻿using System.Collections.Generic;
+
+namespace DiskQueue.Implementation
 {
     /// <inheritdoc cref="IPersistentQueueSession{T}"/>
     public class PersistentQueueSession<T> : PersistentQueueSession, IPersistentQueueSession<T>
@@ -29,6 +31,24 @@
             {
                 Enqueue(bytes);
             }
+        }
+
+        /// <summary>
+        /// Try to pull data all from the queue. Data is not removed from the queue
+        /// </summary>
+        public new List<T> ToList()
+        {
+            var typedList = new List<T>();
+            List<byte[]> dataList = base.ToList();
+            foreach (byte[] data in dataList)
+            {
+                T? obj = SerializationStrategy.Deserialize(data);
+                if( obj != null )
+                {
+                    typedList.Add(obj);
+                }
+            }
+            return typedList;
         }
     }
 }
