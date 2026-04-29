@@ -142,8 +142,8 @@ namespace DiskQueue.Implementation
 		{
 			try
 			{
-				ReadMetaState();
-				ReadTransactionLog();
+				if (_file.FileExists(Meta)) ReadMetaState();
+				if (_file.FileExists(TransactionLog)) ReadTransactionLog();
 			}
 			catch (Exception)
 			{

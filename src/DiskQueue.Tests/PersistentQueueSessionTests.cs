@@ -16,6 +16,7 @@ namespace DiskQueue.Tests
     public class PersistentQueueSessionTests : PersistentQueueTestsBase
     {
         protected override string Path => "./PersistentQueueSessionTest";
+        protected string MissingPath => "./NonExistentDirectory";
 
         [Test]
         public void Errors_raised_during_pending_write_will_be_thrown_on_flush()
@@ -51,6 +52,57 @@ namespace DiskQueue.Tests
             });
 
             Assert.That(notSupportedException.Message, Is.EqualTo(@"Memory stream is not expandable."));
+        }
+
+        [Test]
+        public void Opening_a_session_by_waiting_on_an_empty_directory()
+        {
+            try
+            {
+                File.Delete(System.IO.Path.Combine(MissingPath, "data.0"));
+                File.Delete(System.IO.Path.Combine(MissingPath, "meta.state"));
+                File.Delete(System.IO.Path.Combine(MissingPath, "transaction.log"));
+                File.Delete(System.IO.Path.Combine(MissingPath, "lock"));
+                Directory.Delete(MissingPath);
+            }
+            catch
+            {
+                // ignore
+            }
+
+            for (int i = 0; i < 10; i++)
+            {
+                using var queue   = PersistentQueue.WaitFor(MissingPath, TimeSpan.FromSeconds(1));
+                using var session = queue.OpenSession();
+
+                var message = session.Dequeue();
+                session.Flush();
+
+                Assert.That(message, Is.Null);
+            }
+
+            // Now write something
+            {
+                using (var queue = PersistentQueue.WaitFor(MissingPath, TimeSpan.FromSeconds(1)))
+                {
+                    using var session = queue.OpenSession();
+                    session.Enqueue("Hello"u8.ToArray());
+                    session.Flush();
+                }
+            }
+
+            // And read back
+            for (int i = 0; i < 10; i++)
+            {
+                using var queue   = PersistentQueue.WaitFor(MissingPath, TimeSpan.FromSeconds(1));
+                using var session = queue.OpenSession();
+
+                var message = session.Dequeue();
+                session.Flush();
+
+                if (i > 0) Assert.That(message, Is.Null);
+                else Assert.That(message, Is.EqualTo("Hello"u8.ToArray()).AsCollection);
+            }
         }
 
         [Test]
