@@ -139,6 +139,23 @@ namespace DiskQueue.Implementation
 			return entry.Data;
 		}
 
+        /// <summary>
+        /// Try to pull data all from the queue. Data is not removed from the queue
+        /// </summary>
+        public List<byte[]> ToList()
+		{
+			var retList = new List<byte[]>();
+			var entries = _queue.ToList();
+			foreach(var entry in entries)
+			{
+				if( entry.Data != null )
+				{
+                    retList.Add(entry.Data);
+                }
+            }
+			return retList;
+		}
+
 		/// <summary>
 		/// Commit actions taken in this session since last flush.
 		/// If the session is disposed with no flush, actions are not persisted 

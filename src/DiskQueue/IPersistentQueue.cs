@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 
 namespace DiskQueue
 {
@@ -21,10 +22,10 @@ namespace DiskQueue
 		/// </summary>
 		int EstimatedCountOfItemsInQueue { get; }
 
-		/// <summary>
-		/// Advanced adjustable settings. Use with caution. Read the source code.
-		/// </summary>
-		IPersistentQueueImpl Internals { get; }
+        /// <summary>
+        /// Advanced adjustable settings. Use with caution. Read the source code.
+        /// </summary>
+        IPersistentQueueImpl Internals { get; }
 
 		/// <summary>
 		/// Maximum size of files in queue. New files will be rolled-out if this is exceeded.

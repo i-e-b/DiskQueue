@@ -1,4 +1,5 @@
-﻿using DiskQueue.Implementation;
+﻿using System.Collections.Generic;
+using DiskQueue.Implementation;
 
 namespace DiskQueue
 {
@@ -14,6 +15,11 @@ namespace DiskQueue
         /// Try to pull data from the queue. Data is removed from the queue on `Flush()`
         /// </summary>
         new T? Dequeue();
+
+        /// <summary>
+        /// Try to pull data all from the queue. Data is not removed from the queue
+        /// </summary>
+        new List<T> ToList();
 
         /// <summary>
         /// This class performs the serialization of the object to be queued into a byte array suitable for queueing.
