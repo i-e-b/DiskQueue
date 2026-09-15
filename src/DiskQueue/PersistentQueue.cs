@@ -30,6 +30,8 @@ namespace DiskQueue
 		private static T WaitFor<T>(Func<T> generator, TimeSpan maxWait, string lockName)
 		{
 			var sw = new Stopwatch();
+
+			Exception? lastException;
 			try
 			{
 				sw.Start();
@@ -48,8 +50,9 @@ namespace DiskQueue
 						Log("Blocked by " + ex.GetType()?.Name + "; " + ex.Message + Environment.NewLine + Environment.NewLine + ex.StackTrace);
 						throw;
 					}
-					catch
+					catch (Exception ex)
 					{
+						lastException = ex;
 						Thread.Sleep(50);
 					}
 				} while (sw.Elapsed < maxWait);
@@ -58,7 +61,7 @@ namespace DiskQueue
 			{
 				sw.Stop();
 			}
-			throw new TimeoutException($"Could not acquire a lock on '{lockName}' in the time specified");
+			throw new TimeoutException($"Could not acquire a lock on '{lockName}' in the time specified", lastException);
 		}
 
 		/// <summary>
@@ -123,6 +126,17 @@ namespace DiskQueue
 		public static IPersistentQueue<T> WaitFor<T>(string storagePath, int maxSize, bool throwOnConflict, TimeSpan maxWait)
 		{
 			return WaitFor(()=> new PersistentQueue<T>(storagePath, maxSize, throwOnConflict), maxWait, storagePath);
+		}
+
+		/// <summary>
+		/// WARNING: Delete any existing lock file for the given storage path.
+		/// This should only be used when you are sure there are no concurrent users (e.g. after recovering from a system crash).
+		/// <p/>
+		/// If you clear locks when another process or thread is using the queue, you may corrupt the queue files.
+		/// </summary>
+		public static bool ClearLocks(string storagePath)
+		{
+			return PersistentQueueImpl.DangerousHardUnlockQueue(storagePath);
 		}
 
 		/// <summary>

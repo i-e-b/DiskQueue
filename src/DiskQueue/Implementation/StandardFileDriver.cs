@@ -35,11 +35,11 @@ namespace DiskQueue.Implementation
         /// Moves a file to a temporary name and adds it to an internal
         /// delete list. Files are permanently deleted on a call to Finalise()
         /// </summary>
-        public void PrepareDelete(string path)
+        public bool PrepareDelete(string path)
         {
             lock (_lock)
             {
-	            if (!FileExists(path)) return;
+	            if (!FileExists(path)) return false;
                 var dir = Path.GetDirectoryName(path) ?? "";
                 var file = Path.GetFileNameWithoutExtension(path);
                 var prefix = Path.GetRandomFileName();
@@ -49,7 +49,10 @@ namespace DiskQueue.Implementation
                 if (Move(path, deletePath))
                 {
 	                _waitingDeletes.Enqueue(deletePath);
+	                return true;
                 }
+
+                return false;
             }
         }
 

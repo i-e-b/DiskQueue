@@ -65,9 +65,9 @@ namespace DiskQueue.Tests
 
         public void ReleaseLock(ILockFile fileLock) { }
 
-        public void PrepareDelete(string path)
+        public bool PrepareDelete(string path)
         {
-            _realDriver.PrepareDelete(path);
+            return _realDriver.PrepareDelete(path);
         }
 
         public void Finalise()

@@ -153,7 +153,19 @@ namespace DiskQueue.Implementation
 			}
 		}
 
-		private void UnlockQueue()
+		internal static bool DangerousHardUnlockQueue(string path)
+		{
+			var file = new StandardFileDriver();
+			var fullPath = file.GetFullPath(path);
+			if (string.IsNullOrWhiteSpace(fullPath)) return false;
+
+			var target = file.PathCombine(fullPath, "lock");
+			var found = file.PrepareDelete(target);
+			file.Finalise();
+			return found;
+		}
+
+		internal void UnlockQueue()
 		{
 			lock (_writerLock)
 			{

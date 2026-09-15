@@ -88,10 +88,10 @@ namespace DiskQueue
         void ReleaseLock(ILockFile fileLock);
 
         /// <summary>
-        /// Ready a file for delete on next call to Finalise
+        /// Ready a file for delete on next call to Finalise.
+        /// Returns <c>true</c> if the file exists and can be deleted.
         /// </summary>
-        /// <param name="path"></param>
-        void PrepareDelete(string path);
+        bool PrepareDelete(string path);
 
         /// <summary>
         /// Complete any waiting file operations
