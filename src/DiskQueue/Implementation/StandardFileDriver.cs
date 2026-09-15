@@ -133,6 +133,8 @@ namespace DiskQueue.Implementation
         {
 	        try
 	        {
+		        if (lockData.ProcessId == 0) return false; // Root process should not be creating lock files. Assume this is a blank file.
+
 		        var p = Process.GetProcessById(lockData.ProcessId);
 				var startTimeOffset = GetProcessStartAsUnixTimeMs(p);
 		        return startTimeOffset == lockData.ProcessStart;
