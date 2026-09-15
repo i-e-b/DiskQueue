@@ -8,10 +8,10 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="microsoft.net.test.sdk" Version="16.7.1" />
-    <PackageReference Include="nsubstitute" Version="4.0.0" />
-    <PackageReference Include="nunit" Version="3.12.0" />
-    <PackageReference Include="nunit3testadapter" Version="3.17.0" />
+    <PackageReference Include="microsoft.net.test.sdk" Version="18.10.0" />
+    <PackageReference Include="nsubstitute" Version="6.2.0" />
+    <PackageReference Include="nunit" Version="4.6.1" />
+    <PackageReference Include="nunit3testadapter" Version="6.3.0" />
   </ItemGroup>
 
   <ItemGroup>

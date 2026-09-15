@@ -5,6 +5,7 @@ using System.IO;
 using DiskQueue.Implementation;
 // ReSharper disable PossibleNullReferenceException
 // ReSharper disable AssignNullToNotNullAttribute
+#pragma warning disable CS8604 // Possible null reference argument.
 
 namespace DiskQueue.Tests
 {

@@ -7,6 +7,8 @@ using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using DiskQueue.Tests.Helpers;
+using NUnit.Framework.Legacy;
+#pragma warning disable CS8602 // Dereference of a possibly null reference.
 
 // ReSharper disable PossibleNullReferenceException
 
@@ -44,11 +46,9 @@ namespace DiskQueue.Tests
 
             var notSupportedException = Assert.Throws<NotSupportedException>(() =>
             {
-                using (var session = new PersistentQueueSession(queueStub, fileStream, 1024 * 1024, 1000))
-                {
-                    session.Enqueue(new byte[64]);
-                    session.Flush();
-                }
+                using var session = new PersistentQueueSession(queueStub, fileStream, 1024 * 1024, 1000);
+                session.Enqueue(new byte[64]);
+                session.Flush();
             });
 
             Assert.That(notSupportedException.Message, Is.EqualTo(@"Memory stream is not expandable."));
@@ -83,12 +83,10 @@ namespace DiskQueue.Tests
 
             // Now write something
             {
-                using (var queue = PersistentQueue.WaitFor(MissingPath, TimeSpan.FromSeconds(1)))
-                {
-                    using var session = queue.OpenSession();
-                    session.Enqueue("Hello"u8.ToArray());
-                    session.Flush();
-                }
+                using var queue   = PersistentQueue.WaitFor(MissingPath, TimeSpan.FromSeconds(1));
+                using var session = queue.OpenSession();
+                session.Enqueue("Hello"u8.ToArray());
+                session.Flush();
             }
 
             // And read back
@@ -121,13 +119,9 @@ namespace DiskQueue.Tests
 
             Assert.Throws<InvalidOperationException>(() =>
             {
-                using (var queue = new PersistentQueue(Path))
-                {
-                    using (var session = queue.OpenSession())
-                    {
-                        session.Dequeue();
-                    }
-                }
+                using var queue   = new PersistentQueue(Path);
+                using var session = queue.OpenSession();
+                session.Dequeue();
             });
         }
         
@@ -209,7 +203,7 @@ namespace DiskQueue.Tests
         {
             var queueStub = Substitute.For<IPersistentQueueImpl>();
 
-            queueStub.WhenForAnyArgs(x => x.AcquireWriter(default!, default!, default!))
+            queueStub.WhenForAnyArgs(x => x.AcquireWriter(null!, null!, null!))
                 .Do(c => CallActionArgument(c, limitedSizeStream));
             return queueStub!;
         }
